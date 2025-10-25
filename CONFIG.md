@@ -81,3 +81,4 @@ scrapsail-frontend-new/
 **Ready to start?** Run `npm run start-all` to launch everything! 🚀
 
 
+

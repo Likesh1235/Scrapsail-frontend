@@ -8,7 +8,7 @@ async function testMySQLConnection() {
     const connection = await mysql.createConnection({
       host: 'localhost',
       user: 'root',
-      password: '', // Try without password first
+      password: 'Likesh@2006', // Updated with your password
       port: 3306
     });
 
