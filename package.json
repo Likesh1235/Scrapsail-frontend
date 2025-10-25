@@ -1,0 +1,56 @@
+{
+  "name": "scrapsail-frontend-new",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "@headlessui/react": "^2.2.9",
+    "@heroicons/react": "^2.2.0",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^13.5.0",
+    "axios": "^1.12.2",
+    "framer-motion": "^12.23.24",
+    "mysql2": "^3.15.3",
+    "razorpay": "^2.9.6",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-router-dom": "^7.9.4",
+    "react-scripts": "^5.0.1",
+    "web-vitals": "^2.1.4"
+  },
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject",
+    "start-all": "node start-project.js",
+    "otp-server": "cd scrapsail-backend && node otp-server.js",
+    "spring-boot": "cd scrapsail-spring-backend && mvn spring-boot:run",
+    "send-otp": "cd scrapsail-backend && node send-otp-to-user.js",
+    "send-otp-batch": "cd scrapsail-backend && node send-otp-batch.js",
+    "setup-database": "mysql -u root -p < database-setup.sql",
+    "deploy": "npm run build && gh-pages -d build"
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app",
+      "react-app/jest"
+    ]
+  },
+  "devDependencies": {
+    "gh-pages": "^6.1.1"
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  }
+}
