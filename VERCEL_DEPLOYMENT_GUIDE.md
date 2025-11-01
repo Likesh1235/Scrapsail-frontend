@@ -40,7 +40,7 @@ This creates a folder named `build` inside your project. ✅
 
 ### 2.1 Commit Your Changes
 
-First, commit any pending changes:
+✅ **COMPLETED!** Changes have been committed.
 
 ```bash
 git add .
@@ -49,32 +49,22 @@ git commit -m "Prepare for Vercel deployment"
 
 ### 2.2 Create GitHub Repository
 
-1. Go to https://github.com and log in or sign up
-2. Click **"New Repository"** (or the `+` icon → "New repository")
-3. Name it: `scrapsail-frontend` (or any name you prefer)
-4. **Don't** add anything (no README, .gitignore, license)
-5. Click **"Create repository"**
+✅ **COMPLETED!** Repository created at:
+- **Repository:** `Likesh1235/Scrapsail-frontend`
+- **URL:** https://github.com/Likesh1235/Scrapsail-frontend.git
 
 ### 2.3 Push to GitHub
 
-Now in your VS Code terminal (make sure you're in `scrapsail-frontend-new` folder):
+✅ **COMPLETED!** Code has been pushed to GitHub.
 
 ```bash
-# Add GitHub remote (replace YOUR_USERNAME with your GitHub username)
-git remote add origin https://github.com/YOUR_USERNAME/scrapsail-frontend.git
-
-# Push to GitHub
+# GitHub remote added and code pushed
+git remote add origin https://github.com/Likesh1235/Scrapsail-frontend.git
 git branch -M main
 git push -u origin main
 ```
 
-**If you get an error that remote already exists:**
-```bash
-git remote set-url origin https://github.com/YOUR_USERNAME/scrapsail-frontend.git
-git push -u origin main
-```
-
-✅ Now your React app is live on GitHub!
+✅ **Your React app is now live on GitHub!** 🎉
 
 ---
 
@@ -90,7 +80,7 @@ git push -u origin main
 
 1. Once logged in, click **"Add New Project"** (or "Import Project")
 2. Click **"Import Git Repository"**
-3. Select your `scrapsail-frontend` repository
+3. Select your `Likesh1235/Scrapsail-frontend` repository (or search for "Scrapsail-frontend")
 4. Vercel auto-detects it's a React app ✅
 
 ### 3.3 Configure Build Settings
@@ -206,9 +196,9 @@ git push origin main
 
 - [ ] Local app runs with `npm start`
 - [ ] Production build works: `npm run build`
-- [ ] Code committed to git
-- [ ] Repository created on GitHub
-- [ ] Code pushed to GitHub
+- [x] Code committed to git ✅
+- [x] Repository created on GitHub ✅ (Likesh1235/Scrapsail-frontend)
+- [x] Code pushed to GitHub ✅
 - [ ] Vercel account created
 - [ ] Project imported to Vercel
 - [ ] Environment variables set (especially `REACT_APP_API_BASE_URL`)
