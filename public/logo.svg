@@ -1,0 +1,32 @@
+<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <!-- Sail with circuit pattern -->
+  <defs>
+    <pattern id="circuitPattern" x="0" y="0" width="8" height="8" patternUnits="userSpaceOnUse">
+      <circle cx="2" cy="2" r="0.5" fill="#93C5FD" opacity="0.6"/>
+      <circle cx="6" cy="2" r="0.5" fill="#93C5FD" opacity="0.6"/>
+      <circle cx="4" cy="4" r="0.5" fill="#93C5FD" opacity="0.6"/>
+      <circle cx="2" cy="6" r="0.5" fill="#93C5FD" opacity="0.6"/>
+      <circle cx="6" cy="6" r="0.5" fill="#93C5FD" opacity="0.6"/>
+      <line x1="2" y1="2" x2="4" y2="2" stroke="#93C5FD" stroke-width="0.3" opacity="0.6"/>
+      <line x1="6" y1="2" x2="4" y2="2" stroke="#93C5FD" stroke-width="0.3" opacity="0.6"/>
+    </pattern>
+  </defs>
+  
+  <!-- Sail -->
+  <path d="M32 8 L48 8 L40 24 L32 8 Z" fill="url(#circuitPattern)" stroke="#1E40AF" stroke-width="1"/>
+  
+  <!-- Recycling symbol in center of sail -->
+  <g transform="translate(36, 16)">
+    <path d="M8 2L9.09 8.26L15 7L13.74 13.09L20 12L13.74 10.91L15 17L9.09 15.74L8 22L6.91 15.74L1 17L2.26 10.91L-4 12L2.26 13.09L1 7L6.91 8.26L8 2Z" 
+          fill="#10B981" stroke="#059669" stroke-width="0.5"/>
+  </g>
+  
+  <!-- Hull/Water -->
+  <path d="M16 24 Q20 28 24 24 Q28 28 32 24 Q36 28 40 24 Q44 28 48 24 L48 32 Q44 30 40 32 Q36 30 32 32 Q28 30 24 32 Q20 30 16 32 Z" 
+        fill="#1E3A8A" stroke="#1E40AF" stroke-width="1"/>
+  
+  <!-- Water waves -->
+  <path d="M20 28 Q22 30 24 28 Q26 30 28 28" stroke="#3B82F6" stroke-width="1" fill="none" opacity="0.6"/>
+  <path d="M32 28 Q34 30 36 28 Q38 30 40 28" stroke="#3B82F6" stroke-width="1" fill="none" opacity="0.6"/>
+</svg>
+

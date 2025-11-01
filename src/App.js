@@ -14,30 +14,53 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   
   if (!user.role) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/" replace />;
   }
   
   if (allowedRoles && !allowedRoles.includes(user.role)) {
     // Redirect to appropriate page based on role
     switch (user.role) {
       case 'admin':
-        return <Navigate to="/admin" replace />;
+        return <Navigate to="/admin-dashboard" replace />;
       case 'collector':
-        return <Navigate to="/collector" replace />;
+        return <Navigate to="/collector-dashboard" replace />;
       default:
-        return <Navigate to="/" replace />;
+        return <Navigate to="/dashboard" replace />;
     }
   }
   
   return children;
 };
 
+// Login Route Component - Redirects if already logged in
+const LoginRoute = () => {
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  
+  // If user is already logged in, redirect to appropriate dashboard
+  if (user.role) {
+    switch (user.role) {
+      case 'admin':
+        return <Navigate to="/admin-dashboard" replace />;
+      case 'collector':
+        return <Navigate to="/collector-dashboard" replace />;
+      default:
+        return <Navigate to="/dashboard" replace />;
+    }
+  }
+  
+  return <Login />;
+};
+
 function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/login" element={<Login />} />
+        {/* Root path shows login page */}
+        <Route path="/" element={<LoginRoute />} />
+        {/* Keep /login as alias for backwards compatibility */}
+        <Route path="/login" element={<LoginRoute />} />
+        {/* Keep /home for the home page if needed */}
+        <Route path="/home" element={<Home />} />
         <Route path="/register" element={<Register />} />
         {/* User-only routes */}
         <Route 
@@ -72,10 +95,26 @@ function App() {
             </ProtectedRoute>
           } 
         />
+        <Route 
+          path="/admin-dashboard" 
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <AdminDashboard />
+            </ProtectedRoute>
+          } 
+        />
         
         {/* Collector-only routes */}
         <Route 
           path="/collector" 
+          element={
+            <ProtectedRoute allowedRoles={['collector']}>
+              <CollectorDashboard />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/collector-dashboard" 
           element={
             <ProtectedRoute allowedRoles={['collector']}>
               <CollectorDashboard />

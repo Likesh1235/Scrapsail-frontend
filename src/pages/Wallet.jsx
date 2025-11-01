@@ -1,24 +1,49 @@
 import React, { useState, useEffect } from "react";
-import { redirectToRazorpay } from "../config/razorpay";
+import { API_CONFIG } from "../config/api";
 
 export default function Wallet() {
   const [balance, setBalance] = useState(0);
+  const [points, setPoints] = useState(0);
+  const [totalRedeemed, setTotalRedeemed] = useState(0);
+  const [userId, setUserId] = useState(null);
   const [transactions, setTransactions] = useState([]);
   const [creditAmount, setCreditAmount] = useState("");
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [redeemAmount, setRedeemAmount] = useState(0);
 
   useEffect(() => {
-    // Simulate fetching wallet data
-    setBalance(1250);
-    setTransactions([
-      { id: 1, type: 'credit', amount: 150, description: 'Plastic recycling reward', date: '2025-01-15', time: '14:30', status: 'completed' },
-      { id: 2, type: 'credit', amount: 200, description: 'E-waste collection bonus', date: '2025-01-14', time: '10:15', status: 'completed' },
-      { id: 3, type: 'debit', amount: -500, description: 'Eco Water Bottle redemption', date: '2025-01-12', time: '16:45', status: 'completed' },
-      { id: 4, type: 'credit', amount: 100, description: 'Paper recycling', date: '2025-01-10', time: '09:20', status: 'completed' },
-      { id: 5, type: 'credit', amount: 75, description: 'Referral bonus', date: '2025-01-08', time: '11:30', status: 'completed' },
-      { id: 6, type: 'credit', amount: 300, description: 'Monthly recycling bonus', date: '2025-01-01', time: '00:00', status: 'completed' }
-    ]);
+    // Fetch real wallet data from Spring Boot backend
+    const fetchWalletData = async () => {
+      try {
+        const userData = JSON.parse(localStorage.getItem('user') || '{}');
+        if (userData.id) {
+          setUserId(userData.id);
+          // Fetch wallet from Spring Boot backend
+          const response = await fetch(`${API_CONFIG.SPRING_BOOT_URL}/api/wallet/${userData.id}`);
+          const data = await response.json();
+          
+          if (data.success && data.data) {
+            setBalance(data.data.balance || 0);
+            setPoints(data.data.points || 0);
+            setTotalRedeemed(data.data.totalRedeemed || 0);
+          } else {
+            // Initialize wallet for new user
+            setBalance(0);
+            setPoints(0);
+            setTotalRedeemed(0);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch wallet data:', error);
+        setBalance(0);
+        setPoints(0);
+        setTotalRedeemed(0);
+      }
+    };
+
+    fetchWalletData();
   }, []);
 
   const showNotification = (message, type = 'success') => {
@@ -59,11 +84,67 @@ export default function Wallet() {
     }, 1000);
   };
 
+  const handleRedeem = async () => {
+    if (balance < 50) {
+      showNotification("Minimum ₹50 required for redemption!", 'error');
+      return;
+    }
+
+    if (!userId) {
+      showNotification("Please login first to redeem!", 'error');
+      return;
+    }
+
+    const amountToRedeem = prompt('Enter amount to redeem (minimum ₹50):');
+    if (!amountToRedeem || amountToRedeem < 50) {
+      showNotification("Invalid amount!", 'error');
+      return;
+    }
+
+    if (amountToRedeem > balance) {
+      showNotification("Insufficient balance!", 'error');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      // Call Spring Boot redemption API
+      const response = await fetch(`${API_CONFIG.SPRING_BOOT_URL}/api/wallet/redeem?userId=${userId}&amount=${amountToRedeem}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ amount: amountToRedeem })
+      });
+
+      const data = await response.json();
+      
+      if (data.success && data.data) {
+        // Update local wallet state
+        setBalance(data.data.balance || 0);
+        setPoints(data.data.points || 0);
+        setTotalRedeemed(data.data.totalRedeemed || 0);
+        setRedeemAmount(data.data.redeemedAmount || amountToRedeem);
+        setShowSuccessModal(true);
+        showNotification(data.message || `Successfully redeemed \u20b9${amountToRedeem}! 💰`);
+      } else {
+        showNotification(data.message || "Redemption failed!", 'error');
+      }
+    } catch (error) {
+      console.error('Redemption error:', error);
+      showNotification("Redemption failed. Please try again.", 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const getTransactionIcon = (type) => {
+    if (type === 'redemption') return '💰';
     return type === 'credit' ? '↗️' : '↙️';
   };
 
   const getTransactionColor = (type) => {
+    if (type === 'redemption') return 'text-yellow-400';
     return type === 'credit' ? 'text-green-400' : 'text-red-400';
   };
 
@@ -75,6 +156,10 @@ export default function Wallet() {
       default: return 'bg-gray-100 text-gray-800';
     }
   };
+
+  // Get last redemption amount
+  const lastRedemption = transactions.find(t => t.type === 'redemption');
+  const lastRedemptionAmount = lastRedemption ? Math.abs(lastRedemption.amount) : 0;
 
   return (
     <>
@@ -104,20 +189,24 @@ export default function Wallet() {
           {/* Balance Card */}
           <div className="glass rounded-3xl p-8 mb-8 shadow-2xl">
             <div className="text-center">
-              <h2 className="text-3xl font-bold text-white mb-2">💰 {balance.toLocaleString()} Credits</h2>
-              <p className="text-white/80 mb-6">Your current carbon credit balance</p>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <h2 className="text-3xl font-bold text-white mb-2">💰 ₹{balance.toLocaleString()}</h2>
+              <p className="text-white/80 mb-6">Your current wallet balance • {points} Carbon Points</p>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="bg-white/20 rounded-xl p-4">
-                  <div className="text-2xl font-bold text-white">350</div>
-                  <div className="text-white/80 text-sm">This Month</div>
+                  <div className="text-2xl font-bold text-white">\u20b9{balance}</div>
+                  <div className="text-white/80 text-sm">Current Balance</div>
                 </div>
                 <div className="bg-white/20 rounded-xl p-4">
-                  <div className="text-2xl font-bold text-white">2,100</div>
-                  <div className="text-white/80 text-sm">All Time</div>
+                  <div className="text-2xl font-bold text-white">{points}</div>
+                  <div className="text-white/80 text-sm">Carbon Points</div>
                 </div>
                 <div className="bg-white/20 rounded-xl p-4">
-                  <div className="text-2xl font-bold text-white">#12</div>
-                  <div className="text-white/80 text-sm">Your Rank</div>
+                  <div className="text-2xl font-bold text-white">\u20b9{totalRedeemed}</div>
+                  <div className="text-white/80 text-sm">Total Redeemed</div>
+                </div>
+                <div className="bg-white/20 rounded-xl p-4">
+                  <div className="text-2xl font-bold text-white">\u20b9{balance + totalRedeemed}</div>
+                  <div className="text-white/80 text-sm">Lifetime Earnings</div>
                 </div>
               </div>
             </div>
@@ -153,7 +242,7 @@ export default function Wallet() {
                           <span className="text-2xl">♻️</span>
                           <div>
                             <div className="text-white font-semibold">Recycle Materials</div>
-                            <div className="text-white/70 text-sm">10-50 credits per kg</div>
+                            <div className="text-white/70 text-sm">1 credit per kg</div>
                           </div>
                         </div>
                         <div className="flex items-center space-x-3">
@@ -199,6 +288,25 @@ export default function Wallet() {
                       </div>
                     </div>
                   </div>
+                  
+                  {/* Transaction Summary */}
+                  <div className="bg-white/10 rounded-xl p-6">
+                    <h4 className="text-lg font-semibold text-white mb-4">📊 Transaction Summary</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-green-400">{transactions.filter(t => t.type === 'credit').length}</div>
+                        <div className="text-white/70 text-sm">Total Earned</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-yellow-400">{transactions.filter(t => t.type === 'redemption').length}</div>
+                        <div className="text-white/70 text-sm">Total Redeemed</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-blue-400">{lastRedemptionAmount}</div>
+                        <div className="text-white/70 text-sm">Last Redeem</div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -213,7 +321,8 @@ export default function Wallet() {
                       >
                         <div className="flex items-center space-x-4">
                           <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                            transaction.type === 'credit' ? 'bg-green-100' : 'bg-red-100'
+                            transaction.type === 'credit' ? 'bg-green-100' : 
+                            transaction.type === 'redemption' ? 'bg-yellow-100' : 'bg-red-100'
                           }`}>
                             <span className="text-lg">{getTransactionIcon(transaction.type)}</span>
                           </div>
@@ -269,19 +378,11 @@ export default function Wallet() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <div 
               className="glass rounded-2xl p-6 text-center shadow-2xl hover:scale-105 transition-all duration-300 cursor-pointer"
-              onClick={() => {
-                if (balance < 100) {
-                  showNotification("Minimum 100 credits required for redemption!", 'error');
-                  return;
-                }
-                // Use centralized Razorpay redirect function
-                redirectToRazorpay(balance, '', 'ScrapSail Carbon Credit Redemption');
-                showNotification("Redirecting to Razorpay for redemption! 💰");
-              }}
+              onClick={handleRedeem}
             >
               <div className="text-3xl mb-3">💰</div>
               <div className="text-white font-semibold">Redeem Credits</div>
-              <div className="text-white/70 text-sm">Convert to cash via Razorpay</div>
+              <div className="text-white/70 text-sm">Convert credits to cash</div>
             </div>
             <div className="glass rounded-2xl p-6 text-center shadow-2xl hover:scale-105 transition-all duration-300">
               <div className="text-3xl mb-3">🚛</div>
@@ -301,6 +402,36 @@ export default function Wallet() {
           </div>
         </div>
       </div>
+
+      {/* Success Modal */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-3xl p-8 max-w-md mx-4 text-center shadow-2xl">
+            <div className="text-6xl mb-4">💰</div>
+            <h2 className="text-2xl font-bold text-green-600 mb-2">Redemption Successful!</h2>
+            <p className="text-gray-600 mb-4">
+              You have successfully redeemed <span className="font-bold text-green-600">₹{redeemAmount}</span>
+            </p>
+            <div className="bg-green-50 rounded-xl p-4 mb-6">
+              <div className="text-lg font-semibold text-green-700">₹{redeemAmount}</div>
+              <div className="text-sm text-green-600">Amount credited to your account</div>
+            </div>
+            <div className="bg-blue-50 rounded-xl p-4 mb-6">
+              <div className="text-sm text-blue-600">New Balance: <span className="font-bold">₹{balance}</span></div>
+              <div className="text-sm text-blue-600">Total Redeemed: <span className="font-bold">₹{totalRedeemed}</span></div>
+            </div>
+            <button
+              onClick={() => {
+                setShowSuccessModal(false);
+                window.location.reload(); // Refresh to show updated data
+              }}
+              className="w-full bg-green-500 hover:bg-green-600 text-white py-3 rounded-xl font-semibold transition-colors duration-200"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </>
   );
 }

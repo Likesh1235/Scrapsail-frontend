@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import Navbar from "../components/Navbar";
+import { API_CONFIG } from "../config/api";
 
 export default function CollectorDashboard() {
   const [assignedPickups, setAssignedPickups] = useState([]);
@@ -9,31 +10,57 @@ export default function CollectorDashboard() {
   // Load assigned pickups for the collector
   useEffect(() => {
     const fetchAssignedPickups = async () => {
+      console.log('🔄 Fetching assigned pickups for collector...');
       setLoading(true);
       try {
-        // Mock data for demonstration (simplified)
-        const mockPickups = [
-          {
-            id: "PU003",
-            userId: "U003", 
-            userName: "Regular User",
-            userEmail: "user@scrapsail.com",
-            userPhone: "+91 98765 43210",
-            wasteCategory: "Paper",
-            weight: 12.0,
-            pickupAddress: "789 Recycle Road, Bangalore",
-            scheduledDate: "2024-01-16T09:00:00Z",
-            status: "assigned",
-            carbonCreditsEarned: 12,
-            createdAt: "2024-01-14T18:20:00Z",
-            adminNotes: "Please collect during morning hours"
-          }
-        ];
+        // Get collector email from localStorage
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        const collectorEmail = user.email || 'collector@scrapsail.com';
         
-        setAssignedPickups(mockPickups);
+        // Fetch APPROVED orders assigned to this collector
+        const url = `${API_CONFIG.SPRING_BOOT_URL}/api/collector/orders?collectorEmail=${collectorEmail}`;
+        console.log('📡 Calling:', url);
+        
+        const response = await fetch(url);
+        const data = await response.json();
+        
+        console.log('📥 Response:', data);
+        
+        if (data.success) {
+          const myOrders = data.orders;
+          
+          console.log('📦 Total assigned orders:', myOrders.length);
+          
+          const formattedPickups = myOrders.map(order => ({
+            id: order.id,
+            userId: order.user?.id || 'Unknown',
+            userName: order.user?.name || order.userEmail?.split('@')[0] || 'Unknown',
+            userEmail: order.userEmail || order.user?.email || 'Not provided',
+            userPhone: order.userPhone || order.user?.phone || "Not provided",
+            wasteCategory: order.itemType,
+            weight: order.weight,
+            pickupAddress: order.address,
+            scheduledDate: order.scheduledDate,
+            status: order.status,
+            carbonCreditsEarned: Math.floor(order.weight * 1), // 1kg = 1 credit
+            createdAt: order.createdAt,
+            adminNotes: order.adminNotes,
+            collectorAssigned: order.collectorEmail,
+            latitude: order.latitude,
+            longitude: order.longitude,
+            // GPS link from database - prioritize this
+            gpsLink: order.gpsLink || order.navigationLink || order.mapLink || order.locationLink || order.location?.navigationUrl
+          }));
+          
+          setAssignedPickups(formattedPickups);
+          setMessage(`✅ Loaded ${formattedPickups.length} assigned pickups`);
+        } else {
+          console.error('❌ Failed to fetch assigned pickups:', data.message);
+          setMessage("❌ Failed to load assigned pickups");
+        }
       } catch (error) {
-        console.error('Failed to fetch assigned pickups:', error);
-        setMessage("❌ Failed to load assigned pickups");
+        console.error('❌ Error fetching assigned pickups:', error);
+        setMessage(`❌ Failed to load assigned pickups: ${error.message}`);
       } finally {
         setLoading(false);
       }
@@ -42,6 +69,7 @@ export default function CollectorDashboard() {
     fetchAssignedPickups();
   }, []);
 
+  // eslint-disable-next-line no-unused-vars
   const handleAcceptPickup = async (pickupId) => {
     try {
       setMessage("🔄 Starting pickup...");
@@ -117,7 +145,6 @@ export default function CollectorDashboard() {
         <div className="glass rounded-2xl shadow-2xl overflow-hidden">
           <div className="bg-white/20 p-6">
             <h3 className="text-xl font-bold text-white mb-4">📋 Your Assigned Pickups</h3>
-            <p className="text-white/80">Review and accept/reject pickup assignments from admin</p>
           </div>
 
           {loading ? (
@@ -128,23 +155,22 @@ export default function CollectorDashboard() {
               <p className="text-white">Loading pickups...</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto max-h-[500px] overflow-y-auto custom-scrollbar">
               <table className="min-w-full">
-                <thead className="bg-white/20">
+                <thead className="bg-white/20 sticky top-0 z-10">
                   <tr>
                     <th className="py-3 px-4 text-left text-white font-semibold">Pickup ID</th>
                     <th className="py-3 px-4 text-left text-white font-semibold">Customer</th>
                     <th className="py-3 px-4 text-left text-white font-semibold">Waste Type</th>
                     <th className="py-3 px-4 text-left text-white font-semibold">Weight</th>
-                    <th className="py-3 px-4 text-left text-white font-semibold">Location</th>
+                    <th className="py-3 px-4 text-left text-white font-semibold">Location & Navigation</th>
                     <th className="py-3 px-4 text-left text-white font-semibold">Status</th>
-                    <th className="py-3 px-4 text-left text-white font-semibold">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {assignedPickups.length === 0 ? (
                     <tr>
-                      <td colSpan="7" className="text-center py-12">
+                      <td colSpan="6" className="text-center py-12">
                         <div className="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center mx-auto mb-4">
                           <span className="text-2xl">📭</span>
                         </div>
@@ -158,7 +184,7 @@ export default function CollectorDashboard() {
                         <td className="py-4 px-4">
                           <div className="text-white font-mono text-sm font-bold">#{pickup.id}</div>
                           <div className="text-white/60 text-xs">
-                            {new Date(pickup.createdAt).toLocaleDateString()}
+                            {pickup.createdAt ? new Date(pickup.createdAt).toLocaleDateString() : 'N/A'}
                           </div>
                         </td>
                         <td className="py-4 px-4">
@@ -178,14 +204,92 @@ export default function CollectorDashboard() {
                           <div className="text-white/60 text-xs">{pickup.carbonCreditsEarned} credits</div>
                         </td>
                         <td className="py-4 px-4">
-                          <div className="text-white text-sm max-w-xs truncate">
-                            {pickup.pickupAddress}
+                          {/* Address */}
+                          <div className="text-white text-sm max-w-xs mb-2">
+                            📍 {pickup.pickupAddress}
                           </div>
-                          <div className="text-white/60 text-xs">
-                            {new Date(pickup.scheduledDate).toLocaleDateString()}
+                          
+                          {/* Scheduled Date - Only show if exists */}
+                          {pickup.scheduledDate && (
+                            <div className="text-white/60 text-xs mb-2">
+                              📅 {new Date(pickup.scheduledDate).toLocaleDateString()}
+                            </div>
+                          )}
+                          
+                          {/* GPS Coordinates & Navigation */}
+                          <div className="space-y-2">
+                            {/* Address Display */}
+                            {pickup.pickupAddress && (
+                              <div className="text-white/80 text-xs mb-2">
+                                📍 {pickup.pickupAddress}
+                              </div>
+                            )}
+                            
+                            {/* Coordinates Display (if available) */}
+                            {pickup.latitude && pickup.longitude && (
+                              <div className="text-blue-300 text-xs font-mono mb-2">
+                                🗺️ {pickup.latitude.toFixed(6)}, {pickup.longitude.toFixed(6)}
+                              </div>
+                            )}
+                            
+                            {/* Navigate Button - Use GPS link from database (generated from captured latitude/longitude) */}
+                            <div>
+                              {pickup.latitude && pickup.longitude ? (
+                                // Use GPS link from database (generated from lat/lng) or generate directly from lat/lng
+                                <a 
+                                  href={pickup.gpsLink || `https://www.google.com/maps?q=${pickup.latitude},${pickup.longitude}`}
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="inline-block px-4 py-2 bg-green-500 text-white text-sm rounded-lg hover:bg-green-600 transition font-semibold shadow-lg cursor-pointer"
+                                >
+                                  🧭 Navigate
+                                </a>
+                              ) : pickup.gpsLink ? (
+                                // Fallback: Use GPS link from database if no coordinates available
+                                <a 
+                                  href={pickup.gpsLink}
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="inline-block px-4 py-2 bg-green-500 text-white text-sm rounded-lg hover:bg-green-600 transition font-semibold shadow-lg cursor-pointer"
+                                >
+                                  🧭 Navigate
+                                </a>
+                              ) : pickup.pickupAddress ? (
+                                // Last resort: Use address-based search
+                                <a 
+                                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(pickup.pickupAddress)}`}
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="inline-block px-4 py-2 bg-blue-500 text-white text-sm rounded-lg hover:bg-blue-600 transition font-semibold shadow-lg cursor-pointer"
+                                >
+                                  🗺️ Navigate (Address)
+                                </a>
+                              ) : (
+                                <div className="text-red-300 text-xs">
+                                  ⚠️ No location information available
+                                </div>
+                              )}
+                            </div>
+                            
+                            {/* Show status info */}
+                            {pickup.latitude && pickup.longitude ? (
+                              <div className="text-green-300 text-xs">
+                                ✅ GPS coordinates: {pickup.latitude.toFixed(6)}, {pickup.longitude.toFixed(6)}
+                              </div>
+                            ) : pickup.gpsLink ? (
+                              <div className="text-yellow-300 text-xs">
+                                ⚠️ Using GPS link from database
+                              </div>
+                            ) : pickup.pickupAddress ? (
+                              <div className="text-yellow-300 text-xs">
+                                ⚠️ Using address-based navigation
+                              </div>
+                            ) : null}
                           </div>
+                          
+                          {/* Admin Notes */}
                           {pickup.adminNotes && (
-                            <div className="text-yellow-300 text-xs mt-1">
+                            <div className="text-yellow-300 text-xs mt-2 p-2 bg-yellow-500/20 rounded">
                               📝 {pickup.adminNotes}
                             </div>
                           )}
@@ -194,29 +298,6 @@ export default function CollectorDashboard() {
                           <span className={`px-3 py-1 ${getStatusColor(pickup.status)} text-white rounded-full text-sm font-semibold`}>
                             {getStatusText(pickup.status)}
                           </span>
-                        </td>
-                        <td className="py-4 px-4">
-                          <div className="flex flex-col gap-2">
-                            {pickup.status === 'assigned' && (
-                              <div className="text-center">
-                                <button
-                                  onClick={() => handleAcceptPickup(pickup.id)}
-                                  className="px-4 py-2 bg-green-500 text-white rounded-lg text-sm hover:bg-green-600 transition font-semibold"
-                                >
-                                  ✅ Start Pickup
-                                </button>
-                              </div>
-                            )}
-                            
-                            {pickup.status === 'in-progress' && (
-                              <div className="text-center">
-                                <span className="text-yellow-400 text-sm font-semibold">🔄 In Progress</span>
-                                <div className="text-white/60 text-xs">
-                                  {pickup.startedAt && new Date(pickup.startedAt).toLocaleString()}
-                                </div>
-                              </div>
-                            )}
-                          </div>
                         </td>
                       </tr>
                     ))
@@ -234,22 +315,16 @@ export default function CollectorDashboard() {
           </div>
           
           <div className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="bg-white/10 rounded-xl p-4 text-center">
                 <div className="text-3xl font-bold text-white">{assignedPickups.length}</div>
                 <div className="text-white/80">Total Assigned</div>
               </div>
               <div className="bg-white/10 rounded-xl p-4 text-center">
                 <div className="text-3xl font-bold text-white">
-                  {assignedPickups.filter(p => p.status === 'collector-accepted').length}
+                  {assignedPickups.reduce((sum, p) => sum + p.weight, 0).toFixed(2)} kg
                 </div>
-                <div className="text-white/80">Accepted</div>
-              </div>
-              <div className="bg-white/10 rounded-xl p-4 text-center">
-                <div className="text-3xl font-bold text-white">
-                  {assignedPickups.filter(p => p.status === 'collector-rejected').length}
-                </div>
-                <div className="text-white/80">Rejected</div>
+                <div className="text-white/80">Total Weight</div>
               </div>
             </div>
           </div>

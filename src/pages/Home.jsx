@@ -2,6 +2,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import Navbar from "../components/Navbar";
+import ScrapSailLogo from "../components/ScrapSailLogo";
 
 const Home = () => {
   return (
@@ -19,8 +20,7 @@ const Home = () => {
           {/* Header Section */}
           <div className="text-center mb-8">
             <div className="flex items-center justify-center mb-4">
-              <span className="text-4xl mr-3">♻️</span>
-              <h1 className="text-4xl font-bold text-green-600">Welcome to ScrapSail</h1>
+              <ScrapSailLogo size="large" showText={true} />
             </div>
             <p className="text-gray-600 text-lg">
               Turn your waste into wealth — recycle, earn carbon credits, and help build a cleaner planet.

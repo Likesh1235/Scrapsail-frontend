@@ -1,5 +1,6 @@
 import React from "react";
 import { Link, useNavigate } from "react-router-dom";
+import ScrapSailLogo from "./ScrapSailLogo";
 
 const Navbar = () => {
   const navigate = useNavigate();
@@ -11,7 +12,7 @@ const Navbar = () => {
   const handleLogout = () => {
     localStorage.removeItem('user');
     localStorage.removeItem('token');
-    navigate('/login');
+    navigate('/'); // Navigate to login page (root path)
   };
 
   // Navigation items based on user role
@@ -28,7 +29,8 @@ const Navbar = () => {
         ];
       default: // user - show old navbar
         return [
-          { to: "/", label: "Home", icon: "🏠" },
+          { to: "/home", label: "Home", icon: "🏠" },
+          { to: "/dashboard", label: "Dashboard", icon: "📊" },
           { to: "/leaderboard", label: "Leaderboard", icon: "🏆" },
           { to: "/pickup", label: "Pickup", icon: "♻️" },
           { to: "/wallet", label: "Wallet", icon: "💰" }
@@ -41,17 +43,7 @@ const Navbar = () => {
       <div className="flex justify-between items-center">
         {/* Logo */}
         <div className="flex items-center">
-          <div className="text-2xl mr-3 bg-gradient-to-r from-blue-400 to-green-400 bg-clip-text text-transparent">
-            ♻️
-          </div>
-          <h1 className="text-2xl font-bold">
-            <span className="bg-gradient-to-r from-blue-400 to-green-400 bg-clip-text text-transparent">
-              Scrap
-            </span>
-            <span className="bg-gradient-to-r from-green-400 to-blue-400 bg-clip-text text-transparent">
-              Sail
-            </span>
-          </h1>
+          <ScrapSailLogo size="medium" showText={true} />
         </div>
         
         {/* Navigation Links */}

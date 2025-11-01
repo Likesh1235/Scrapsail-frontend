@@ -1,25 +1,83 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+import API_CONFIG from "../config/api";
 
 export default function CarbonCredits() {
   const [activeTab, setActiveTab] = useState("overview");
   const [selectedReward, setSelectedReward] = useState(null);
+  const [rewards, setRewards] = useState([]);
+  const [transactions, setTransactions] = useState([]);
+  const [carbonCredits, setCarbonCredits] = useState(0);
 
-  const rewards = [
-    { id: 1, name: "Eco Water Bottle", cost: 500, emoji: "🍃", description: "Sustainable bamboo water bottle" },
-    { id: 2, name: "Plant a Tree", cost: 1000, emoji: "🌱", description: "Plant a tree in your name" },
-    { id: 3, name: "Solar Power Bank", cost: 1500, emoji: "☀️", description: "Portable solar charging device" },
-    { id: 4, name: "Organic Tote Bag", cost: 300, emoji: "👜", description: "100% organic cotton tote bag" },
-    { id: 5, name: "LED Bulb Set", cost: 800, emoji: "💡", description: "Energy-efficient LED bulbs" },
-    { id: 6, name: "Compost Kit", cost: 1200, emoji: "🌿", description: "Home composting starter kit" }
-  ];
+  // Fetch real data from backend
+  useEffect(() => {
+    const fetchCarbonData = async () => {
+      try {
+        const baseUrl = process.env.REACT_APP_API_BASE_URL || process.env.REACT_APP_API_URL || API_CONFIG.SPRING_BOOT_URL;
+        const userData = JSON.parse(localStorage.getItem('user') || '{}');
+        if (userData.email) {
+          // Fetch carbon credits and transactions from Spring Boot backend
+          const response = await fetch(`${baseUrl}/api/carbon-wallet/${userData.email}`);
+          
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          
+          const data = await response.json();
+          
+          if (data.success) {
+            setCarbonCredits(data.balance || 0);
+            setTransactions(data.transactions || []);
+          }
+        }
+        
+        // Fetch available rewards from backend
+        const rewardsResponse = await fetch(`${baseUrl}/api/rewards`);
+        
+        if (!rewardsResponse.ok) {
+          throw new Error(`HTTP error! status: ${rewardsResponse.status}`);
+        }
+        
+        const rewardsData = await rewardsResponse.json();
+        
+        if (rewardsData.success) {
+          setRewards(rewardsData.rewards || []);
+        } else {
+          // Fallback rewards if API fails
+          setRewards([
+            { id: 1, name: "Eco Water Bottle", cost: 500, emoji: "🍃", description: "Sustainable bamboo water bottle" },
+            { id: 2, name: "Plant a Tree", cost: 1000, emoji: "🌱", description: "Plant a tree in your name" },
+            { id: 3, name: "Solar Power Bank", cost: 1500, emoji: "☀️", description: "Portable solar charging device" },
+            { id: 4, name: "Organic Tote Bag", cost: 300, emoji: "👜", description: "100% organic cotton tote bag" },
+            { id: 5, name: "LED Bulb Set", cost: 800, emoji: "💡", description: "Energy-efficient LED bulbs" },
+            { id: 6, name: "Compost Kit", cost: 1200, emoji: "🌿", description: "Home composting starter kit" }
+          ]);
+        }
+      } catch (error) {
+        console.error('Failed to fetch carbon data:', error);
+        
+        // Show user-friendly error message
+        if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+          console.error('❌ Cannot connect to backend server. Please ensure the backend is running on http://localhost:8080');
+          alert('⚠️ Cannot connect to server. Please ensure the backend server is running on http://localhost:8080');
+        }
+        
+        // Fallback data
+        setCarbonCredits(0);
+        setTransactions([]);
+        setRewards([
+          { id: 1, name: "Eco Water Bottle", cost: 500, emoji: "🍃", description: "Sustainable bamboo water bottle" },
+          { id: 2, name: "Plant a Tree", cost: 1000, emoji: "🌱", description: "Plant a tree in your name" },
+          { id: 3, name: "Solar Power Bank", cost: 1500, emoji: "☀️", description: "Portable solar charging device" },
+          { id: 4, name: "Organic Tote Bag", cost: 300, emoji: "👜", description: "100% organic cotton tote bag" },
+          { id: 5, name: "LED Bulb Set", cost: 800, emoji: "💡", description: "Energy-efficient LED bulbs" },
+          { id: 6, name: "Compost Kit", cost: 1200, emoji: "🌿", description: "Home composting starter kit" }
+        ]);
+      }
+    };
 
-  const transactions = [
-    { date: "Jan 15, 2025", type: "Earned", amount: 150, description: "Plastic recycling" },
-    { date: "Jan 12, 2025", type: "Earned", amount: 200, description: "E-waste collection" },
-    { date: "Jan 10, 2025", type: "Redeemed", amount: -500, description: "Eco Water Bottle" },
-    { date: "Jan 8, 2025", type: "Earned", amount: 100, description: "Paper recycling" }
-  ];
+    fetchCarbonData();
+  }, []);
 
   const showNotification = (message, type = 'success') => {
     const notification = document.createElement('div');
@@ -31,7 +89,7 @@ export default function CarbonCredits() {
   };
 
   const handleRedeem = (reward) => {
-    if (1250 >= reward.cost) {
+    if (carbonCredits >= reward.cost) {
       showNotification(`Successfully redeemed ${reward.name}! 🎉`);
       setSelectedReward(null);
     } else {
@@ -63,7 +121,7 @@ export default function CarbonCredits() {
             </div>
             <div className="text-right">
               <p className="text-sm text-gray-600">Your Balance</p>
-              <p className="text-2xl font-bold text-green-600">1,250 Credits</p>
+              <p className="text-2xl font-bold text-green-600">{carbonCredits.toLocaleString()} Credits</p>
             </div>
           </div>
         </header>
@@ -73,15 +131,15 @@ export default function CarbonCredits() {
           <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-3xl p-8 mb-8 shadow-2xl">
             <div className="flex justify-between items-center">
               <div>
-                <h2 className="text-3xl font-bold mb-2">💰 1,250 Credits</h2>
+                <h2 className="text-3xl font-bold mb-2">💰 {carbonCredits.toLocaleString()} Credits</h2>
                 <p className="text-green-100 mb-4">Keep recycling to earn more!</p>
                 <div className="flex space-x-4">
                   <div className="text-center">
-                    <p className="text-2xl font-bold">350</p>
+                    <p className="text-2xl font-bold">{Math.floor(carbonCredits * 0.28)}</p>
                     <p className="text-sm text-green-100">This Month</p>
                   </div>
                   <div className="text-center">
-                    <p className="text-2xl font-bold">2,100</p>
+                    <p className="text-2xl font-bold">{carbonCredits}</p>
                     <p className="text-sm text-green-100">All Time</p>
                   </div>
                 </div>
@@ -143,8 +201,8 @@ export default function CarbonCredits() {
                         <p className="text-sm text-gray-600 mb-4">{reward.description}</p>
                         <div className="flex justify-between items-center">
                           <span className="text-lg font-bold text-green-600">{reward.cost} Credits</span>
-                          <button className={`px-4 py-2 rounded-lg font-semibold transition ${1250 >= reward.cost ? 'bg-green-500 text-white hover:bg-green-600' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}>
-                            {1250 >= reward.cost ? 'Redeem' : 'Need More'}
+                          <button className={`px-4 py-2 rounded-lg font-semibold transition ${carbonCredits >= reward.cost ? 'bg-green-500 text-white hover:bg-green-600' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}>
+                            {carbonCredits >= reward.cost ? 'Redeem' : 'Need More'}
                           </button>
                         </div>
                       </div>
@@ -198,8 +256,8 @@ export default function CarbonCredits() {
                   </button>
                   <button
                     onClick={() => handleRedeem(selectedReward)}
-                    className={`flex-1 px-6 py-3 rounded-xl font-semibold transition ${1250 >= selectedReward.cost ? 'bg-green-500 text-white hover:bg-green-600' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
-                    disabled={1250 < selectedReward.cost}
+                    className={`flex-1 px-6 py-3 rounded-xl font-semibold transition ${carbonCredits >= selectedReward.cost ? 'bg-green-500 text-white hover:bg-green-600' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
+                    disabled={carbonCredits < selectedReward.cost}
                   >
                     Redeem Now
                   </button>

@@ -1,107 +1,114 @@
 import React, { useState, useEffect } from "react";
 import Navbar from "../components/Navbar";
+import { API_CONFIG } from "../config/api";
 
 export default function AdminDashboard() {
   const [pendingPickups, setPendingPickups] = useState([]);
-  const [collectors, setCollectors] = useState([]);
+  const [allOrders, setAllOrders] = useState([]);
   const [assigning, setAssigning] = useState(null);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showScrollTop, setShowScrollTop] = useState(false);
 
-  // Load collectors (simplified - only 1 collector)
-  const loadCollectors = () => {
-    try {
-      const mockCollectors = [
-        { id: 2, name: "Collector User", email: "collector@scrapsail.com", phone: "+91 98765 43210", status: "available" }
-      ];
-      setCollectors(mockCollectors);
-    } catch (error) {
-      console.error('Error loading collectors:', error);
-      setCollectors([]);
-    }
-  };
-
-  // Fetch pending pickups
+  // Scroll to top button handler
   useEffect(() => {
-    const fetchPendingPickups = async () => {
+    const handleScroll = () => {
+      setShowScrollTop(window.scrollY > 300);
+    };
+    
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Fetch ALL orders (including assigned, approved, completed)
+  useEffect(() => {
+    const fetchAllOrders = async () => {
+      console.log('🔄 Fetching all orders from admin dashboard...');
       setLoading(true);
       try {
-        // Mock data for demonstration (simplified)
-        const mockPickups = [
-          {
-            id: "PU001",
-            userId: "U003",
-            userName: "Regular User",
-            userEmail: "user@scrapsail.com",
-            userPhone: "+91 98765 43210",
-            wasteCategory: "Plastic",
-            weight: 15.5,
-            pickupAddress: "123 Green Street, Mumbai",
-            scheduledDate: "2024-01-15T10:00:00Z",
-            status: "pending",
-            carbonCreditsEarned: 15,
-            createdAt: "2024-01-14T15:30:00Z"
-          },
-          {
-            id: "PU002", 
-            userId: "U003",
-            userName: "Regular User",
-            userEmail: "user@scrapsail.com",
-            userPhone: "+91 98765 43210",
-            wasteCategory: "Metal",
-            weight: 8.2,
-            pickupAddress: "456 Eco Lane, Delhi",
-            scheduledDate: "2024-01-15T14:00:00Z",
-            status: "pending",
-            carbonCreditsEarned: 8,
-            createdAt: "2024-01-14T16:45:00Z"
-          },
-          {
-            id: "PU003",
-            userId: "U003", 
-            userName: "Regular User",
-            userEmail: "user@scrapsail.com",
-            userPhone: "+91 98765 43210",
-            wasteCategory: "Paper",
-            weight: 12.0,
-            pickupAddress: "789 Recycle Road, Bangalore",
-            scheduledDate: "2024-01-16T09:00:00Z",
-            status: "assigned",
-            assignedCollectorId: 2,
-            assignedCollectorName: "Collector User",
-            carbonCreditsEarned: 12,
-            createdAt: "2024-01-14T18:20:00Z"
-          }
-        ];
+        // Fetch ALL orders from Spring Boot backend (not just pending)
+        const url = `${API_CONFIG.SPRING_BOOT_URL}/api/admin/all-orders`;
+        console.log('📡 Calling:', url);
         
-        setPendingPickups(mockPickups);
+        const response = await fetch(url);
+        const data = await response.json();
+        
+        console.log('📥 Response:', data);
+        console.log('📊 Total orders count:', data.count);
+        
+        if (data.success) {
+          // Transform the data to match the expected format
+          const formattedOrders = data.orders.map(order => ({
+            id: order.id,
+            userId: order.user?.id || 'Unknown',
+            userName: order.user?.name || order.userEmail?.split('@')[0] || 'Unknown',
+            userEmail: order.userEmail || order.user?.email || 'Not provided',
+            userPhone: order.user?.phone || order.userPhone || "Not provided",
+            wasteCategory: order.itemType,
+            weight: order.weight,
+            pickupAddress: order.address,
+            scheduledDate: order.scheduledDate,
+            status: order.status,
+            carbonCreditsEarned: Math.floor(order.weight * 1), // 1kg = 1 credit
+            createdAt: order.createdAt,
+            collectorAssigned: order.collectorEmail || order.collectorAssigned,
+            adminNotes: order.adminNotes,
+            approvedAt: order.approvedAt,
+            assignedAt: order.assignedAt
+          }));
+          
+          // Separate pending from all other orders
+          const pending = formattedOrders.filter(o => o.status === 'PENDING_APPROVAL');
+          const otherOrders = formattedOrders.filter(o => o.status !== 'PENDING_APPROVAL');
+          
+          console.log('✅ Pending orders:', pending.length);
+          console.log('✅ Other orders (assigned/approved/completed):', otherOrders.length);
+          
+          setPendingPickups(pending);
+          setAllOrders(otherOrders); // Store all non-pending orders for history section
+          setMessage(`✅ Loaded ${pending.length} pending orders and ${otherOrders.length} previous orders`);
+        } else {
+          console.error('❌ Failed to fetch orders:', data.message);
+          setMessage("❌ Failed to load orders");
+        }
       } catch (error) {
-        console.error('Failed to fetch pending pickups:', error);
-        setMessage("❌ Failed to load pickup requests");
+        console.error('❌ Error fetching orders:', error);
+        setMessage(`❌ Failed to load orders: ${error.message}`);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchPendingPickups();
-    loadCollectors();
+    fetchAllOrders();
   }, []);
 
   const handleAcceptOrder = async (pickupId) => {
     try {
       setMessage("🔄 Approving order...");
       
-      // Update pickup status to approved (collector will be auto-assigned)
-      setPendingPickups(prev => 
-        prev.map(pickup => 
-          pickup.id === pickupId 
-            ? { ...pickup, status: "approved" }
-            : pickup
-        )
-      );
+      // Call Spring Boot backend API to approve the order
+      const response = await fetch(`${API_CONFIG.SPRING_BOOT_URL}/api/admin/approve-order/${pickupId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          collectorEmail: 'collector@scrapsail.com',
+          adminNotes: 'Approved by admin'
+        })
+      });
       
-      setMessage("✅ Order approved and collector assigned automatically!");
-      setTimeout(() => setMessage(""), 3000);
+      const data = await response.json();
+      
+      if (data.success) {
+        // Refresh all orders after approval
+        window.location.reload(); // Simple refresh to get updated orders
+        setMessage("✅ Order approved successfully! Points allocated to user.");
+        setTimeout(() => setMessage(""), 3000);
+      } else {
+        setMessage(`❌ Failed to approve order: ${data.message}`);
+        setTimeout(() => setMessage(""), 3000);
+      }
     } catch (error) {
       console.error('Accept order error:', error);
       setMessage("❌ Failed to approve order");
@@ -116,17 +123,28 @@ export default function AdminDashboard() {
       
       setMessage("🔄 Rejecting order...");
       
-      // Update pickup status to rejected
-      setPendingPickups(prev => 
-        prev.map(pickup => 
-          pickup.id === pickupId 
-            ? { ...pickup, status: "rejected", rejectionReason: reason }
-            : pickup
-        )
-      );
+      // Call Spring Boot backend API to reject the order
+      const response = await fetch(`${API_CONFIG.SPRING_BOOT_URL}/api/admin/reject-order/${pickupId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          adminNotes: reason
+        })
+      });
       
-      setMessage("❌ Order rejected");
-      setTimeout(() => setMessage(""), 3000);
+      const data = await response.json();
+      
+      if (data.success) {
+        // Refresh all orders after rejection
+        window.location.reload(); // Simple refresh to get updated orders
+        setMessage("❌ Order rejected");
+        setTimeout(() => setMessage(""), 3000);
+      } else {
+        setMessage(`❌ Failed to reject order: ${data.message}`);
+        setTimeout(() => setMessage(""), 3000);
+      }
     } catch (error) {
       console.error('Reject order error:', error);
       setMessage("❌ Failed to reject order");
@@ -141,12 +159,8 @@ export default function AdminDashboard() {
       setAssigning(pickupId);
       setMessage("🔄 Assigning to collector...");
       
-      const collector = collectors.find(c => c.id === collectorId);
-      
-      if (!collector) {
-        setMessage("❌ Collector not found");
-        return;
-      }
+      // Auto-assign to collector@scrapsail.com
+      const collectorName = 'Scrapsail Collector';
       
       // Update pickup with collector assignment
       setPendingPickups(prev => 
@@ -155,15 +169,15 @@ export default function AdminDashboard() {
             ? { 
                 ...pickup, 
                 status: "assigned",
-                assignedCollectorId: collectorId,
-                assignedCollectorName: collector.name || 'Unknown Collector',
+                assignedCollectorId: 9, // Collector ID from database
+                assignedCollectorName: collectorName,
                 assignedAt: new Date().toISOString()
               }
             : pickup
         )
       );
       
-      setMessage(`✅ Assigned to ${collector.name || 'Unknown Collector'}`);
+      setMessage(`✅ Assigned to ${collectorName}`);
       setTimeout(() => setMessage(""), 3000);
     } catch (error) {
       console.error('Assign collector error:', error);
@@ -176,22 +190,36 @@ export default function AdminDashboard() {
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'pending': return 'bg-yellow-500';
-      case 'approved': return 'bg-green-500';
-      case 'rejected': return 'bg-red-500';
-      case 'assigned': return 'bg-blue-500';
-      case 'completed': return 'bg-purple-500';
+      case 'pending':
+      case 'PENDING_APPROVAL': return 'bg-yellow-500';
+      case 'approved':
+      case 'APPROVED': return 'bg-green-500';
+      case 'rejected':
+      case 'REJECTED': return 'bg-red-500';
+      case 'assigned':
+      case 'ASSIGNED': return 'bg-blue-500';
+      case 'completed':
+      case 'COMPLETED': return 'bg-purple-500';
+      case 'ACCEPTED': return 'bg-indigo-500';
+      case 'PICKED_UP': return 'bg-purple-400';
       default: return 'bg-gray-500';
     }
   };
 
   const getStatusText = (status) => {
     switch (status) {
-      case 'pending': return 'Pending Review';
-      case 'approved': return 'Approved & Assigned';
-      case 'rejected': return 'Rejected';
-      case 'assigned': return 'Assigned to Collector';
-      case 'completed': return 'Completed';
+      case 'pending':
+      case 'PENDING_APPROVAL': return 'Pending Approval';
+      case 'approved':
+      case 'APPROVED': return 'Approved';
+      case 'rejected':
+      case 'REJECTED': return 'Rejected';
+      case 'assigned':
+      case 'ASSIGNED': return 'Assigned to Collector';
+      case 'ACCEPTED': return 'Accepted by Collector';
+      case 'PICKED_UP': return 'Picked Up';
+      case 'completed':
+      case 'COMPLETED': return 'Completed';
       default: return status;
     }
   };
@@ -214,8 +242,11 @@ export default function AdminDashboard() {
               </div>
             </div>
             <div className="text-right">
-              <div className="text-2xl font-bold text-white">{pendingPickups.length}</div>
+              <div className="text-2xl font-bold text-white">{pendingPickups.length + allOrders.length}</div>
               <div className="text-white/80">Total Orders</div>
+              <div className="text-sm text-white/60 mt-1">
+                ({pendingPickups.length} pending, {allOrders.length} completed/assigned)
+              </div>
             </div>
           </div>
         </div>
@@ -242,9 +273,9 @@ export default function AdminDashboard() {
               <p className="text-white">Loading orders...</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto max-h-[500px] overflow-y-auto custom-scrollbar">
               <table className="min-w-full">
-                <thead className="bg-white/20">
+                <thead className="bg-white/20 sticky top-0 z-10">
                   <tr>
                     <th className="py-3 px-4 text-left text-white font-semibold">Order ID</th>
                     <th className="py-3 px-4 text-left text-white font-semibold">Customer</th>
@@ -297,7 +328,7 @@ export default function AdminDashboard() {
                             {pickup.pickupAddress}
                           </div>
                           <div className="text-white/60 text-xs">
-                            {new Date(pickup.scheduledDate).toLocaleDateString()}
+                            {pickup.scheduledDate ? new Date(pickup.scheduledDate).toLocaleDateString() : 'Invalid Date'}
                           </div>
                         </td>
                         <td className="py-4 px-4">
@@ -317,7 +348,7 @@ export default function AdminDashboard() {
                         </td>
                         <td className="py-4 px-4">
                           <div className="flex flex-col gap-2">
-                            {pickup.status === 'pending' && (
+                            {(pickup.status === 'pending' || pickup.status === 'PENDING_APPROVAL') && (
                               <div className="flex gap-2">
                                 <button
                                   onClick={() => handleAcceptOrder(pickup.id)}
@@ -342,14 +373,8 @@ export default function AdminDashboard() {
                                   disabled={assigning === pickup.id}
                                   defaultValue=""
                                 >
-                                  <option value="">Select Collector</option>
-                                  {collectors && collectors.length > 0 ? collectors.filter(c => c && c.status === 'available').map((collector) => (
-                                    <option key={collector.id} value={collector.id} className="text-gray-800">
-                                      {collector.name || 'Unknown Collector'}
-                                    </option>
-                                  )) : (
-                                    <option value="" disabled className="text-gray-800">No collectors available</option>
-                                  )}
+                                  <option value="">Auto-assign to Collector</option>
+                                  <option value="auto" className="text-gray-800">Assign to collector@scrapsail.com</option>
                                 </select>
                                 {assigning === pickup.id && (
                                   <span className="text-sm text-white/70">Assigning...</span>
@@ -385,52 +410,117 @@ export default function AdminDashboard() {
           )}
         </div>
 
-        {/* Available Collectors */}
-        <div className="glass rounded-2xl shadow-2xl mt-8 overflow-hidden">
-          <div className="bg-white/20 p-6">
-            <h3 className="text-xl font-bold text-white mb-4">🚛 Available Collectors</h3>
-            <p className="text-white/80">Collectors ready to accept pickup assignments</p>
-          </div>
-          
-          <div className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {collectors && collectors.length > 0 ? collectors.map((collector) => (
-                <div key={collector.id} className="bg-white/10 rounded-xl p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full flex items-center justify-center">
-                        <span className="text-lg">🚛</span>
-                      </div>
-                      <div>
-                        <h4 className="font-semibold text-white">{collector.name || 'Unknown Collector'}</h4>
-                        <p className="text-white/70 text-sm">ID: {collector.id || 'N/A'}</p>
-                      </div>
-                    </div>
-                    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                      collector.status === 'available' 
-                        ? 'bg-green-500 text-white' 
-                        : 'bg-red-500 text-white'
-                    }`}>
-                      {collector.status === 'available' ? 'Available' : 'Busy'}
-                    </span>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-white/80 text-sm">{collector.email || 'No email'}</p>
-                    <p className="text-white/80 text-sm">{collector.phone || 'No phone'}</p>
-                  </div>
-                </div>
-              )) : (
-                <div className="col-span-full text-center py-8">
-                  <div className="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <span className="text-2xl">🚛</span>
-                  </div>
-                  <h4 className="text-lg font-semibold text-white mb-2">No Collectors Available</h4>
-                  <p className="text-white/70">Collectors will appear here when they register</p>
-                </div>
-              )}
+        {/* Previous Orders / Order History Section */}
+        {allOrders.length > 0 && (
+          <div className="glass rounded-2xl shadow-2xl overflow-hidden mt-8">
+            <div className="bg-white/20 p-6">
+              <h3 className="text-xl font-bold text-white mb-4">📜 Previous Orders History</h3>
+              <p className="text-white/80">View all previously assigned, approved, and completed orders</p>
+            </div>
+
+            <div className="overflow-x-auto max-h-[500px] overflow-y-auto custom-scrollbar">
+              <table className="min-w-full">
+                <thead className="bg-white/20 sticky top-0 z-10">
+                  <tr>
+                    <th className="py-3 px-4 text-left text-white font-semibold">Order ID</th>
+                    <th className="py-3 px-4 text-left text-white font-semibold">Customer</th>
+                    <th className="py-3 px-4 text-left text-white font-semibold">Waste Type</th>
+                    <th className="py-3 px-4 text-left text-white font-semibold">Weight</th>
+                    <th className="py-3 px-4 text-left text-white font-semibold">Location</th>
+                    <th className="py-3 px-4 text-left text-white font-semibold">Status</th>
+                    <th className="py-3 px-4 text-left text-white font-semibold">Collector</th>
+                    <th className="py-3 px-4 text-left text-white font-semibold">Date</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {allOrders.map((order) => (
+                    <tr key={order.id} className="border-b border-white/20 hover:bg-white/10 transition-colors">
+                      <td className="py-4 px-4">
+                        <div className="text-white font-mono text-sm font-bold">#{order.id}</div>
+                        <div className="text-white/60 text-xs">
+                          {order.createdAt ? new Date(order.createdAt).toLocaleDateString() : 'N/A'}
+                        </div>
+                      </td>
+                      <td className="py-4 px-4">
+                        <div>
+                          <p className="text-white font-semibold">{order.userName || 'Unknown User'}</p>
+                          <p className="text-white/70 text-sm">{order.userEmail || 'No email'}</p>
+                          <p className="text-white/60 text-xs">{order.userPhone || 'No phone'}</p>
+                        </div>
+                      </td>
+                      <td className="py-4 px-4">
+                        <span className="px-3 py-1 bg-blue-500 text-white rounded-full text-sm font-semibold">
+                          {order.wasteCategory || 'N/A'}
+                        </span>
+                      </td>
+                      <td className="py-4 px-4">
+                        <div className="text-white font-semibold">{order.weight || 0} kg</div>
+                        <div className="text-white/60 text-xs">{order.carbonCreditsEarned || 0} credits</div>
+                      </td>
+                      <td className="py-4 px-4">
+                        <div className="text-white text-sm max-w-xs truncate">
+                          {order.pickupAddress || 'N/A'}
+                        </div>
+                        {order.scheduledDate && (
+                          <div className="text-white/60 text-xs">
+                            Scheduled: {new Date(order.scheduledDate).toLocaleDateString()}
+                          </div>
+                        )}
+                      </td>
+                      <td className="py-4 px-4">
+                        <span className={`px-3 py-1 ${getStatusColor(order.status)} text-white rounded-full text-sm font-semibold`}>
+                          {getStatusText(order.status)}
+                        </span>
+                      </td>
+                      <td className="py-4 px-4">
+                        {order.collectorAssigned ? (
+                          <div>
+                            <p className="text-white text-sm">{order.collectorAssigned}</p>
+                            {order.assignedAt && (
+                              <p className="text-white/60 text-xs">
+                                Assigned: {new Date(order.assignedAt).toLocaleDateString()}
+                              </p>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-white/60 text-sm">Not assigned</span>
+                        )}
+                      </td>
+                      <td className="py-4 px-4">
+                        <div className="text-white text-sm">
+                          {order.approvedAt ? (
+                            <>
+                              <div>Approved:</div>
+                              <div className="text-white/60 text-xs">
+                                {new Date(order.approvedAt).toLocaleDateString()}
+                              </div>
+                            </>
+                          ) : (
+                            <span className="text-white/60 text-xs">N/A</span>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
-        </div>
+        )}
+
+        {/* Scroll to Top Button */}
+        {showScrollTop && (
+          <button
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+            className="fixed bottom-8 right-8 bg-green-500 hover:bg-green-600 text-white rounded-full p-4 shadow-lg z-50 transition-all duration-300 hover:scale-110"
+            title="Scroll to top"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
+            </svg>
+          </button>
+        )}
+
       </div>
     </div>
   );

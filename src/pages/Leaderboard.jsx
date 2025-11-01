@@ -1,19 +1,42 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import Navbar from "../components/Navbar";
+import { API_CONFIG } from "../config/api";
 
 const Leaderboard = () => {
   // Get user role from localStorage
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const userRole = user.role || 'user';
-  const leaderboardData = [
-    { rank: 1, name: "Likesh", points: 320, medal: "🥇" },
-    { rank: 2, name: "Vishal", points: 280, medal: "🥈" },
-    { rank: 3, name: "Kavin", points: 260, medal: "🥉" },
-    { rank: 4, name: "Priya", points: 210, medal: "4" },
-    { rank: 5, name: "Sanjay", points: 180, medal: "5" }
-  ];
+  const [leaderboardData, setLeaderboardData] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchLeaderboardData = async () => {
+      try {
+        // Fetch real leaderboard data from backend
+        const response = await fetch(`${API_CONFIG.SPRING_BOOT_URL}/api/leaderboard`);
+        const data = await response.json();
+        
+        console.log('📊 Leaderboard response:', data);
+        
+        if (data.success) {
+          setLeaderboardData(data.leaderboard || []);
+        } else {
+          // Fallback to empty array if no data
+          setLeaderboardData([]);
+        }
+      } catch (error) {
+        console.error('Error fetching leaderboard:', error);
+        // Fallback to empty array
+        setLeaderboardData([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchLeaderboardData();
+  }, []);
 
   const getRowBackground = (index) => {
     return index % 2 === 0 ? "bg-yellow-50" : "bg-gray-50";
@@ -55,27 +78,42 @@ const Leaderboard = () => {
 
               {/* Table Body */}
               <div className="divide-y divide-gray-200">
-                {leaderboardData.map((person, index) => (
-                  <motion.div
-                    key={person.rank}
-                    className={`grid grid-cols-3 gap-4 p-4 ${getRowBackground(index)}`}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                  >
-                    <div className="flex items-center">
-                      <span className="text-2xl mr-2">{person.medal}</span>
+                {loading ? (
+                  <div className="p-8 text-center">
+                    <div className="w-8 h-8 border-4 border-green-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                    <p className="text-gray-600">Loading leaderboard...</p>
+                  </div>
+                ) : leaderboardData.length === 0 ? (
+                  <div className="p-8 text-center">
+                    <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <span className="text-2xl">📭</span>
                     </div>
-                    <div className="flex items-center">
-                      <span className={`font-semibold ${index === 0 ? 'font-bold text-black' : 'text-gray-800'}`}>
-                        {person.name}
-                      </span>
-                    </div>
-                    <div className="flex items-center">
-                      <span className="text-green-600 font-semibold">{person.points}</span>
-                    </div>
-                  </motion.div>
-                ))}
+                    <h4 className="text-lg font-semibold text-gray-600 mb-2">No Data Yet</h4>
+                    <p className="text-gray-500">Start recycling to appear on the leaderboard!</p>
+                  </div>
+                ) : (
+                  leaderboardData.map((person, index) => (
+                    <motion.div
+                      key={person.rank}
+                      className={`grid grid-cols-3 gap-4 p-4 ${getRowBackground(index)}`}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: index * 0.1 }}
+                    >
+                      <div className="flex items-center">
+                        <span className="text-2xl mr-2">{person.medal || (index + 1)}</span>
+                      </div>
+                      <div className="flex items-center">
+                        <span className={`font-semibold ${index === 0 ? 'font-bold text-black' : 'text-gray-800'}`}>
+                          {person.name}
+                        </span>
+                      </div>
+                      <div className="flex items-center">
+                        <span className="text-green-600 font-semibold">{person.points}</span>
+                      </div>
+                    </motion.div>
+                  ))
+                )}
               </div>
             </div>
           </div>

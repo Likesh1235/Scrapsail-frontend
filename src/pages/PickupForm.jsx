@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import Navbar from "../components/Navbar";
+import { getOTPUrl, API_CONFIG } from "../config/api";
 
 const PickupForm = () => {
+  const navigate = useNavigate();
   const [form, setForm] = useState({
     wasteCategory: "Plastic",
     weight: "",
@@ -15,6 +18,8 @@ const PickupForm = () => {
   const [otpSent, setOtpSent] = useState(false);
   const [otpVerified, setOtpVerified] = useState(false);
   const [otp, setOtp] = useState("");
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [orderId, setOrderId] = useState("");
 
   // Get logged-in user's email
   useEffect(() => {
@@ -48,9 +53,9 @@ const PickupForm = () => {
     }
 
     try {
-      setMsg("📧 Sending OTP...");
+      setMsg("📧 Generating OTP...");
       
-      const response = await fetch('http://localhost:8080/api/otp/send', {
+      const response = await fetch(getOTPUrl('SEND'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -65,18 +70,14 @@ const PickupForm = () => {
 
       if (response.ok) {
         setOtpSent(true);
-        if (data.otp) {
-          // Email not configured - show OTP in message
-          setMsg(`✅ OTP generated: ${data.otp} (Email not configured - check console)`);
-        } else {
-          setMsg(`✅ OTP sent successfully to ${form.email}! Check your email.`);
-        }
+        setMsg(`✅ ${data.message || 'OTP sent successfully! Please check your email.'}`);
       } else {
         setMsg(`❌ ${data.message || 'Failed to send OTP'}`);
+        console.error('OTP Error:', data);
       }
     } catch (error) {
       console.error('Send OTP error:', error);
-      setMsg("❌ Failed to send OTP. Please check your internet connection.");
+      setMsg(`❌ Failed to generate OTP: ${error.message}. Please check if the backend is running on ${getOTPUrl('SEND')}`);
     }
   };
 
@@ -89,7 +90,7 @@ const PickupForm = () => {
     try {
       setMsg("🔍 Verifying OTP...");
       
-      const response = await fetch('http://localhost:8080/api/otp/verify', {
+      const response = await fetch(getOTPUrl('VERIFY'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -138,26 +139,30 @@ const PickupForm = () => {
             try {
               setMsg("📤 Submitting pickup request...");
               
-              const response = await fetch('http://localhost:8080/api/pickup', {
+              const response = await fetch(`${API_CONFIG.SPRING_BOOT_URL}/api/orders`, {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
                   'Authorization': `Bearer ${localStorage.getItem('token')}`
                 },
                 body: JSON.stringify({
-                  wasteCategory: form.wasteCategory,
+                  itemType: form.wasteCategory,
                   weight: parseFloat(form.weight),
-                  pickupAddress: form.pickupAddress,
+                  address: form.pickupAddress,
                   scheduledDate: form.scheduledDate,
-                  coordinates: form.coordinates,
-                  email: form.email
+                  latitude: form.coordinates ? form.coordinates.latitude : null,
+                  longitude: form.coordinates ? form.coordinates.longitude : null,
+                  userEmail: form.email
                 })
               });
 
               const data = await response.json();
 
-              if (response.ok) {
-                setMsg("✅ Pickup request submitted successfully! Waiting for admin approval.");
+              if (data.success) {
+                // Show success modal
+                setOrderId(data.order?.id || data.orderId || 'N/A');
+                setShowSuccessModal(true);
+                
                 // Reset form
                 setForm({
                   wasteCategory: "Plastic",
@@ -170,6 +175,7 @@ const PickupForm = () => {
                 setOtpSent(false);
                 setOtpVerified(false);
                 setOtp("");
+                setMsg("");
               } else {
                 setMsg(`❌ ${data.message || 'Failed to create pickup request'}`);
               }
@@ -388,6 +394,62 @@ const PickupForm = () => {
           "Small steps towards recycling, big steps towards a greener future."
         </p>
       </div>
+
+      {/* Success Modal */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-3xl p-8 max-w-md mx-4 text-center shadow-2xl"
+          >
+            {/* Success Icon */}
+            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <span className="text-4xl">✅</span>
+            </div>
+            
+            {/* Title */}
+            <h2 className="text-2xl font-bold text-green-600 mb-2">Order Accepted!</h2>
+            
+            {/* Message */}
+            <p className="text-gray-600 mb-4">
+              Your pickup request has been submitted successfully and is waiting for admin approval.
+            </p>
+            
+            {/* Order Details */}
+            <div className="bg-green-50 rounded-xl p-4 mb-6">
+              <div className="text-sm text-gray-600 mb-1">Order ID</div>
+              <div className="text-lg font-semibold text-green-700">#{orderId}</div>
+            </div>
+            
+            {/* Info Box */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 text-left">
+              <div className="flex items-start space-x-2">
+                <span className="text-blue-500 text-xl">ℹ️</span>
+                <div className="text-sm text-blue-800">
+                  <p className="font-semibold mb-1">What happens next?</p>
+                  <ul className="list-disc list-inside space-y-1 text-xs">
+                    <li>Admin will review your request</li>
+                    <li>You'll receive updates on your dashboard</li>
+                    <li>A collector will be assigned shortly</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+            
+            {/* Close Button */}
+            <button
+              onClick={() => {
+                setShowSuccessModal(false);
+                navigate('/dashboard');
+              }}
+              className="w-full bg-green-500 hover:bg-green-600 text-white py-3 rounded-xl font-semibold transition-colors duration-200"
+            >
+              Go to Dashboard
+            </button>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 };

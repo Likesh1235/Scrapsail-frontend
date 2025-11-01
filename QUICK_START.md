@@ -1,115 +1,96 @@
-# 🚀 ScrapSail - Quick Start Guide
+# 🚀 Quick Start Guide
 
-## ✅ **YOUR PROJECT IS READY FOR DEPLOYMENT!**
+## Starting the Backend Server
 
-### 🎯 **What's Been Fixed:**
+You need to start the backend server before the frontend can connect to it.
 
-1. ✅ **MySQL Database Configuration** - Replaced H2 with MySQL
-2. ✅ **Simplified Razorpay Integration** - Direct redirect, no complex forms
-3. ✅ **GitHub Deployment Setup** - Complete CI/CD pipeline
-4. ✅ **Database Setup Script** - Ready-to-run SQL script
-5. ✅ **Environment Configuration** - Production-ready settings
+### Option 1: Using the Script (Easiest)
+Double-click: `START_BACKEND.bat` in the backend folder
 
----
-
-## 🚀 **Quick Deployment Steps:**
-
-### **Step 1: Set up MySQL Database**
-```bash
-# Install MySQL (if not installed)
-# Windows: Download from https://dev.mysql.com/downloads/mysql/
-# Or use: choco install mysql
-
-# Create database
-mysql -u root -p < database-setup.sql
+### Option 2: Manual Start
+Open PowerShell/Command Prompt and run:
+```powershell
+cd c:\Users\likes\scrapsail-backend
+mvn spring-boot:run
 ```
 
-### **Step 2: Configure Environment Variables**
-Create `scrapsail-backend/.env`:
-```env
-PORT=8080
-NODE_ENV=production
-DB_HOST=localhost
-DB_USER=root
-DB_PASSWORD=your_mysql_password
-DB_NAME=scrapsail
-JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
-EMAIL_USER=your-email@gmail.com
-EMAIL_PASS=your-gmail-app-password
-FRONTEND_URL=https://your-username.github.io/scrapsail-frontend-new
+### What to Look For:
+✅ **Success message:**
+```
+Started BackendApplication in X.XXX seconds
 ```
 
-### **Step 3: Deploy to GitHub**
-```bash
-# Initialize git repository
-git init
-git add .
-git commit -m "Initial commit: ScrapSail waste management platform"
+❌ **Common issues:**
+- MySQL not running → Start MySQL service
+- Port 8080 in use → Stop other application using port 8080
+- Database connection error → Check MySQL credentials in `application.properties`
 
-# Create GitHub repository and push
-git remote add origin https://github.com/your-username/scrapsail-frontend-new.git
-git push -u origin main
+---
+
+## Starting the Frontend
+
+### After Backend is Running:
+Open a **NEW** terminal and run:
+```powershell
+cd c:\Users\likes\scrapsail-frontend-new
+npm start
 ```
 
-### **Step 4: Enable GitHub Pages**
-1. Go to your GitHub repository
-2. Click **Settings** → **Pages**
-3. Select **Deploy from a branch**
-4. Choose **main** branch and **/ (root)** folder
-5. Click **Save**
+The browser will open automatically at `http://localhost:3000`
 
 ---
 
-## 🔧 **Key Features Ready:**
+## Starting Both at Once
 
-### **✅ Frontend (React)**
-- 🎨 Modern UI with animations
-- 🔐 Role-based authentication
-- 📱 Responsive design
-- 💰 Carbon wallet with Razorpay redirect
-- 📦 Pickup request system with OTP verification
+Double-click: `START_PROJECT.bat` in the frontend folder
 
-### **✅ Backend (Node.js + Spring Boot)**
-- 📧 Email OTP service (Gmail SMTP)
-- 🗄️ MySQL database integration
-- 🔒 JWT authentication
-- 📊 Admin and collector dashboards
-- 🚀 Production-ready configuration
-
-### **✅ Database (MySQL)**
-- 👥 Users table with roles
-- 📦 Pickups table with status tracking
-- 💳 Transactions table for carbon credits
-- 📧 OTP verification table
-- 🔐 Email whitelist for admin/collector roles
+This will:
+1. Start backend in one terminal window
+2. Wait 10 seconds
+3. Start frontend in another terminal window
 
 ---
 
-## 🌐 **Deployment URLs:**
+## ✅ Verification
 
-After deployment, your app will be available at:
-- **Frontend:** `https://your-username.github.io/scrapsail-frontend-new`
-- **Backend:** `https://your-backend-service.railway.app` (if using Railway)
-- **Database:** Your MySQL instance
+1. **Backend Status:**
+   - Visit: `http://localhost:8080/api/auth/test`
+   - Should see: `{"message":"Auth controller is working!",...}`
 
----
-
-## 🎉 **Ready to Launch!**
-
-Your ScrapSail project is now:
-- ✅ **Production-ready**
-- ✅ **Database-configured**
-- ✅ **GitHub-deployment-ready**
-- ✅ **Razorpay-integrated**
-- ✅ **Email-service-enabled**
-
-### **Next Steps:**
-1. **Deploy to GitHub** (follow steps above)
-2. **Set up backend hosting** (Railway/Vercel recommended)
-3. **Configure production database**
-4. **Test all features**
-5. **Launch!** 🚀
+2. **Frontend Status:**
+   - Visit: `http://localhost:3000/login`
+   - Should see: Green "✅ Backend server is connected"
 
 ---
 
-**ScrapSail** - Making recycling rewarding! 🌱♻️
+## 🛠️ Troubleshooting
+
+### Backend Won't Start
+- Check MySQL is running: `netstat -ano | findstr :3306`
+- Check Java version: `java -version` (need Java 17+)
+- Check Maven: `mvn -version`
+
+### Frontend Shows "Cannot Connect"
+- Ensure backend shows "Started BackendApplication"
+- Wait 10-15 seconds after backend starts
+- Refresh the browser page
+- Check browser console (F12) for errors
+
+### Port Already in Use
+- Backend (8080): `netstat -ano | findstr :8080`
+- Frontend (3000): `netstat -ano | findstr :3000`
+- Kill process: `taskkill /PID <pid> /F`
+
+---
+
+## 📋 Startup Checklist
+
+- [ ] MySQL is running
+- [ ] Backend terminal shows "Started BackendApplication"
+- [ ] Frontend shows green connection status
+- [ ] Can access `http://localhost:3000/login`
+
+---
+
+**Need help?** Check the browser console (F12) for detailed error messages!
+

@@ -1,126 +1,112 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import Navbar from "../components/Navbar";
-import { redirectToRazorpay } from "../config/razorpay";
+import { API_CONFIG } from "../config/api";
 
 const CarbonWallet = () => {
-  const [totalPoints] = useState(1000);
-  const [walletBalance] = useState(1000.00);
-  const [lastRedeem] = useState(0.00);
-  const [remainingPoints] = useState(1000);
+  const [totalPoints, setTotalPoints] = useState(0);
+  const [walletBalance, setWalletBalance] = useState(0.00);
+  const [lastRedeem, setLastRedeem] = useState(0.00);
+  const [remainingPoints, setRemainingPoints] = useState(0);
+  const [redeemedAmount, setRedeemedAmount] = useState(0); // Store the actual redeemed amount
   const [rate] = useState("₹1/point");
-  // TODO: Uncomment when withdrawal modal is implemented
-  // const [showWithdrawalModal, setShowWithdrawalModal] = useState(false);
-  // const [withdrawalForm, setWithdrawalForm] = useState({
-  //   amount: '',
-  //   accountHolderName: '',
-  //   accountNumber: '',
-  //   ifscCode: '',
-  //   bankName: '',
-  //   contact: ''
-  // });
-  // const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  const handleRedeem = () => {
-    // Simple Razorpay redirect - no complex forms needed
+  useEffect(() => {
+    fetchWalletData();
+  }, []);
+
+  const fetchWalletData = async () => {
+    try {
+      const userData = JSON.parse(localStorage.getItem('user') || '{}');
+      if (userData.id) {
+        // Fetch wallet from Spring Boot backend
+        const response = await fetch(`${API_CONFIG.SPRING_BOOT_URL}/api/wallet/${userData.id}`);
+        const data = await response.json();
+        
+        if (data.success && data.data) {
+          setTotalPoints(data.data.points || 0);
+          setWalletBalance(data.data.balance || 0);
+          setLastRedeem(data.data.totalRedeemed || 0);
+          setRemainingPoints(data.data.points || 0);
+        } else {
+          // Initialize wallet for new user
+          setTotalPoints(0);
+          setWalletBalance(0);
+          setLastRedeem(0);
+          setRemainingPoints(0);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch wallet data:', error);
+      setMessage('⚠️ Failed to load wallet data. Please refresh.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRedeem = async () => {
     const user = JSON.parse(localStorage.getItem('user') || '{}');
     
-    if (!user.email) {
+    if (!user.id) {
       setMessage('❌ Please login first to redeem points!');
       return;
     }
 
-    if (remainingPoints < 100) {
-      setMessage('❌ Minimum 100 points required for redemption!');
+    if (walletBalance < 100) {
+      setMessage('❌ Minimum ₹100 balance required for redemption!');
       return;
     }
 
-    // Calculate cash value (1 point = ₹1)
-    const cashValue = remainingPoints;
-    
-    setMessage('🔄 Redirecting to Razorpay for redemption...');
-    
-    // Use the centralized Razorpay redirect function
-    redirectToRazorpay(cashValue, user.email, 'ScrapSail Carbon Credit Redemption');
-    
-    // Show success message
-    setTimeout(() => {
-      setMessage('✅ Redirected to Razorpay! Complete your redemption there.');
-    }, 1000);
+    const amountToRedeem = prompt('Enter amount to redeem (minimum ₹100):');
+    if (!amountToRedeem || amountToRedeem < 100) {
+      setMessage('❌ Invalid amount! Minimum ₹100 required.');
+      return;
+    }
+
+    if (amountToRedeem > walletBalance) {
+      setMessage('❌ Insufficient balance!');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const response = await fetch(`${API_CONFIG.SPRING_BOOT_URL}/api/wallet/redeem?userId=${user.id}&amount=${amountToRedeem}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+
+      const data = await response.json();
+      
+      if (data.success && data.data) {
+        // Store the actual redeemed amount from API response
+        const actualRedeemedAmount = data.data.redeemedAmount || amountToRedeem;
+        setRedeemedAmount(actualRedeemedAmount);
+        
+        // Update local wallet state
+        setWalletBalance(data.data.balance || 0);
+        setTotalPoints(data.data.points || 0);
+        setLastRedeem(data.data.totalRedeemed || 0);
+        setRemainingPoints(data.data.points || 0);
+        setMessage(`✅ Successfully redeemed ₹${actualRedeemedAmount}!`);
+        setShowSuccessModal(true);
+        
+        // Refresh wallet data
+        setTimeout(() => fetchWalletData(), 2000);
+      } else {
+        setMessage(data.message || '❌ Redemption failed!');
+      }
+    } catch (error) {
+      console.error('Redemption error:', error);
+      setMessage('❌ Redemption failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
-
-  // TODO: Implement withdrawal functionality when modal is added
-  // const handleWithdrawalSubmit = async (e) => {
-  //   e.preventDefault();
-  //   setLoading(true);
-  //   setMessage('');
-
-  //   try {
-  //     // Validate form
-  //     if (!withdrawalForm.amount || withdrawalForm.amount <= 0) {
-  //       setMessage('❌ Please enter a valid withdrawal amount');
-  //       setLoading(false);
-  //       return;
-  //     }
-
-  //     if (!withdrawalForm.accountHolderName || !withdrawalForm.accountNumber || !withdrawalForm.ifscCode) {
-  //       setMessage('❌ Please fill in all required bank account details');
-  //       setLoading(false);
-  //       return;
-  //     }
-
-  //     const cashValue = withdrawalForm.amount * 1; // 1 credit = 1 rupee
-  //     if (cashValue < 100) {
-  //       setMessage('❌ Minimum withdrawal amount is ₹100');
-  //       setLoading(false);
-  //       return;
-  //     }
-
-  //     if (withdrawalForm.amount > remainingPoints) {
-  //       setMessage('❌ Insufficient carbon credits');
-  //       setLoading(false);
-  //       return;
-  //     }
-
-  //     // Mock API call - replace with actual API
-  //     setMessage('🔄 Processing withdrawal request via Razorpay...');
-      
-  //     // Simulate API call delay
-  //     await new Promise(resolve => setTimeout(resolve, 2000));
-
-  //     // Mock successful response
-  //     setMessage(`✅ Withdrawal request submitted successfully! Amount: ₹${cashValue}`);
-  //     setRemainingPoints(remainingPoints - withdrawalForm.amount);
-  //     setWalletBalance(walletBalance - cashValue);
-  //     setShowWithdrawalModal(false);
-      
-  //     // Reset form
-  //     setWithdrawalForm({
-  //       amount: '',
-  //       accountHolderName: '',
-  //       accountNumber: '',
-  //       ifscCode: '',
-  //       bankName: '',
-  //       contact: ''
-  //     });
-
-  //   } catch (error) {
-  //     console.error('Withdrawal error:', error);
-  //     setMessage('❌ Withdrawal failed. Please try again.');
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
-
-  // TODO: Implement input change handler when withdrawal modal is added
-  // const handleInputChange = (e) => {
-  //   const { name, value } = e.target;
-  //   setWithdrawalForm(prev => ({
-  //     ...prev,
-  //     [name]: value
-  //   }));
-  // };
 
   return (
     <div className="min-h-screen bg-green-100">
@@ -139,6 +125,14 @@ const CarbonWallet = () => {
             <h1 className="text-3xl font-bold text-green-600">Carbon Credit Wallet</h1>
             <p className="text-gray-600 mt-2">Redeem your points and withdraw to your bank account</p>
           </div>
+
+          {/* Loading State */}
+          {loading && (
+            <div className="mb-6 text-center">
+              <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-green-500 border-t-transparent"></div>
+              <p className="text-gray-600 mt-2">Loading wallet data...</p>
+            </div>
+          )}
 
           {/* Message Display */}
           {message && (
@@ -211,6 +205,33 @@ const CarbonWallet = () => {
           </div>
         </motion.div>
       </div>
+
+      {/* Success Modal */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-3xl p-8 max-w-md mx-4 text-center shadow-2xl">
+            <div className="text-6xl mb-4">💰</div>
+            <h2 className="text-2xl font-bold text-green-600 mb-2">Redemption Successful!</h2>
+            <p className="text-gray-600 mb-4">
+              You have successfully redeemed <span className="font-bold text-green-600">{redeemedAmount}</span> points
+            </p>
+            <div className="bg-green-50 rounded-xl p-4 mb-6">
+              <div className="text-lg font-semibold text-green-700">₹{redeemedAmount}</div>
+              <div className="text-sm text-green-600">Amount credited to your account</div>
+            </div>
+            <div className="bg-blue-50 rounded-xl p-4 mb-6">
+              <div className="text-sm text-blue-600">New Balance: <span className="font-bold">₹{walletBalance.toFixed(2)}</span></div>
+              <div className="text-sm text-blue-600">Total Redeemed: <span className="font-bold">₹{lastRedeem.toFixed(2)}</span></div>
+            </div>
+            <button
+              onClick={() => setShowSuccessModal(false)}
+              className="w-full bg-green-500 hover:bg-green-600 text-white py-3 rounded-xl font-semibold transition-colors duration-200"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

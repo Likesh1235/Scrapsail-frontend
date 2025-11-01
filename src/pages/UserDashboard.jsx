@@ -1,13 +1,56 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+import { API_CONFIG } from "../config/api";
 
 export default function UserDashboard() {
   const [activeTab, setActiveTab] = useState("overview");
+  const [userOrders, setUserOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchUserOrders = async () => {
+      try {
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        if (!user.email) return;
+
+        const response = await fetch(`${API_CONFIG.SPRING_BOOT_URL}/api/orders`);
+        const data = await response.json();
+        
+        if (data.success) {
+          // Filter orders for current user
+          const myOrders = data.orders.filter(order => 
+            order.userEmail === user.email || order.user?.email === user.email
+          );
+          setUserOrders(myOrders);
+        }
+      } catch (error) {
+        console.error('Error fetching orders:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserOrders();
+  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
-    window.location.href = '/login';
+    window.location.href = '/'; // Navigate to login page (root path)
+  };
+
+  const getStatusBadge = (status) => {
+    const statusConfig = {
+      'PENDING_APPROVAL': { bg: 'bg-yellow-100', text: 'text-yellow-800', label: '⏳ Pending Approval', icon: '⏳' },
+      'ASSIGNED': { bg: 'bg-blue-100', text: 'text-blue-800', label: '👷 Assigned to Collector', icon: '👷' },
+      'ACCEPTED': { bg: 'bg-indigo-100', text: 'text-indigo-800', label: '✅ Accepted by Collector', icon: '✅' },
+      'APPROVED': { bg: 'bg-green-100', text: 'text-green-800', label: '✅ Approved', icon: '✅' },
+      'PICKED_UP': { bg: 'bg-purple-100', text: 'text-purple-800', label: '📦 Picked Up', icon: '📦' },
+      'COMPLETED': { bg: 'bg-blue-100', text: 'text-blue-800', label: '🎉 Completed', icon: '🎉' },
+      'REJECTED': { bg: 'bg-red-100', text: 'text-red-800', label: '❌ Rejected', icon: '❌' }
+    };
+    const config = statusConfig[status] || { bg: 'bg-gray-100', text: 'text-gray-800', label: status, icon: '📋' };
+    return { className: `px-3 py-1 ${config.bg} ${config.text} rounded-full text-sm font-medium`, label: config.label, icon: config.icon };
   };
 
   return (
@@ -182,40 +225,51 @@ export default function UserDashboard() {
               {activeTab === "pickups" && (
                 <div className="space-y-6">
                   <div className="flex justify-between items-center">
-                    <h3 className="text-xl font-bold text-white">Pickup History</h3>
+                    <h3 className="text-xl font-bold text-white">My Pickup Orders ({userOrders.length})</h3>
                     <Link to="/pickup" className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition">
                       🚛 Request New Pickup
                     </Link>
                   </div>
-                  <div className="space-y-4">
-                    <div className="p-4 bg-white/10 rounded-lg">
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <p className="font-semibold text-white">Mixed Recyclables</p>
-                          <p className="text-sm text-white/70">Jan 15, 2025 • 15kg</p>
-                        </div>
-                        <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm">Completed</span>
-                      </div>
+                  {loading ? (
+                    <div className="text-center text-white py-8">Loading your orders...</div>
+                  ) : userOrders.length === 0 ? (
+                    <div className="text-center text-white/70 py-8">
+                      <p className="text-2xl mb-2">📦</p>
+                      <p>No pickup orders yet. Request your first pickup!</p>
                     </div>
-                    <div className="p-4 bg-white/10 rounded-lg">
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <p className="font-semibold text-white">Electronic Waste</p>
-                          <p className="text-sm text-white/70">Jan 12, 2025 • 8kg</p>
-                        </div>
-                        <span className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm">Processing</span>
-                      </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {userOrders.map(order => {
+                        const statusBadge = getStatusBadge(order.status);
+                        return (
+                          <div key={order.id} className="p-4 bg-white/10 rounded-lg hover:bg-white/20 transition">
+                            <div className="flex justify-between items-start">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <p className="font-semibold text-white text-lg">{order.itemType || 'Waste'}</p>
+                                  <span className="text-xs bg-white/20 text-white px-2 py-1 rounded">#{order.id}</span>
+                                </div>
+                                <p className="text-sm text-white/70 mb-1">
+                                  📅 {new Date(order.createdAt).toLocaleDateString()} • ⚖️ {order.weight}kg
+                                </p>
+                                <p className="text-xs text-white/60 mb-2">📍 {order.address}</p>
+                                {order.collectorEmail && (
+                                  <p className="text-xs text-white/80 bg-white/10 inline-block px-2 py-1 rounded">
+                                    👷 Collector: {order.collectorEmail}
+                                  </p>
+                                )}
+                              </div>
+                              <div className="ml-4">
+                                <span className={statusBadge.className}>
+                                  {statusBadge.icon} {statusBadge.label}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
-                    <div className="p-4 bg-white/10 rounded-lg">
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <p className="font-semibold text-white">Organic Waste</p>
-                          <p className="text-sm text-white/70">Jan 10, 2025 • 12kg</p>
-                        </div>
-                        <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm">Completed</span>
-                      </div>
-                    </div>
-                  </div>
+                  )}
                 </div>
               )}
 

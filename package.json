@@ -24,7 +24,9 @@
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
-    "start-all": "node start-project.js",
+    "start-both": "node start-both.js",
+    "start-backend": "cd ../scrapsail-backend && mvn spring-boot:run",
+    "start-all": "node start-both.js",
     "otp-server": "cd scrapsail-backend && node otp-server.js",
     "spring-boot": "cd scrapsail-spring-backend && mvn spring-boot:run",
     "send-otp": "cd scrapsail-backend && node send-otp-to-user.js",
@@ -32,6 +34,7 @@
     "setup-database": "mysql -u root -p < database-setup.sql",
     "deploy": "npm run build && gh-pages -d build"
   },
+  "proxy": "http://localhost:8080",
   "eslintConfig": {
     "extends": [
       "react-app",
