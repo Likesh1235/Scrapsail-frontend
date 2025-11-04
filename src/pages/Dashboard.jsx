@@ -1,8 +1,12 @@
 import React, { useState, useEffect } from "react";
 import Navbar from "../components/Navbar";
 import { API_CONFIG } from "../config/api";
+import { useLanguage } from "../contexts/LanguageContext";
+import { getTranslation } from "../translations/translations";
 
 const Dashboard = () => {
+  const { language } = useLanguage();
+  const t = (key) => getTranslation(key, language);
   const [user, setUser] = useState({});
   const [recentPickups, setRecentPickups] = useState([]);
 
@@ -28,6 +32,7 @@ const Dashboard = () => {
         // Transform Spring Boot order data to match the expected format
         const formattedPickups = data.orders.map(order => ({
           id: order.id,
+          userOrderNumber: order.userOrderNumber || order.id,
           type: order.itemType,
           weight: order.weight ? order.weight.toString() : '0',
           status: order.status,
@@ -95,13 +100,26 @@ const Dashboard = () => {
     }
   };
 
+  const getStatusText = (adminStatus) => {
+    switch (adminStatus) {
+      case 'approved':
+        return t('approved');
+      case 'pending':
+        return t('pending');
+      case 'rejected':
+        return t('rejected');
+      default:
+        return adminStatus;
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-100 to-green-200">
       <Navbar />
       <div className="px-6 py-8">
         <div className="text-center mb-8">
           <h2 className="text-3xl font-bold text-green-600 flex items-center justify-center">
-            Welcome, {user.name || user.email || 'User'} 
+            {t('welcome')}, {user.name || user.email || t('user')} 
             <span className="text-blue-500 ml-2">🌍</span>
           </h2>
         </div>
@@ -110,41 +128,41 @@ const Dashboard = () => {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <div className="bg-white rounded-xl shadow-lg p-6 text-center">
             <div className="text-3xl font-bold text-green-600 mb-2">{recentPickups.length}</div>
-            <div className="text-gray-600">Total Orders</div>
+            <div className="text-gray-600">{t('totalOrders')}</div>
           </div>
           <div className="bg-white rounded-xl shadow-lg p-6 text-center">
             <div className="text-3xl font-bold text-blue-600 mb-2">
               {recentPickups.filter(p => p.adminStatus === 'approved').length}
             </div>
-            <div className="text-gray-600">Approved</div>
+            <div className="text-gray-600">{t('approved')}</div>
           </div>
           <div className="bg-white rounded-xl shadow-lg p-6 text-center">
             <div className="text-3xl font-bold text-yellow-600 mb-2">
               {recentPickups.filter(p => p.adminStatus === 'pending').length}
             </div>
-            <div className="text-gray-600">Pending</div>
+            <div className="text-gray-600">{t('pending')}</div>
           </div>
           <div className="bg-white rounded-xl shadow-lg p-6 text-center">
             <div className="text-3xl font-bold text-red-600 mb-2">
               {recentPickups.filter(p => p.adminStatus === 'rejected').length}
             </div>
-            <div className="text-gray-600">Rejected</div>
+            <div className="text-gray-600">{t('rejected')}</div>
           </div>
         </div>
 
         {/* Recent Pickups Table */}
         <div className="bg-white rounded-xl shadow-lg p-6">
-          <h3 className="text-xl font-bold text-green-600 mb-6">📋 Your Order Status</h3>
+          <h3 className="text-xl font-bold text-green-600 mb-6">📋 {t('yourOrderStatus')}</h3>
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="bg-green-100">
-                  <th className="text-left py-3 px-4 font-semibold text-green-700">Order ID</th>
-                  <th className="text-left py-3 px-4 font-semibold text-green-700">Type</th>
-                  <th className="text-left py-3 px-4 font-semibold text-green-700">Weight (kg)</th>
-                  <th className="text-left py-3 px-4 font-semibold text-green-700">Date</th>
-                  <th className="text-left py-3 px-4 font-semibold text-green-700">Admin Status</th>
-                  <th className="text-left py-3 px-4 font-semibold text-green-700">Collector</th>
+                  <th className="text-left py-3 px-4 font-semibold text-green-700">{t('orderId')}</th>
+                  <th className="text-left py-3 px-4 font-semibold text-green-700">{t('type')}</th>
+                  <th className="text-left py-3 px-4 font-semibold text-green-700">{t('weight')}</th>
+                  <th className="text-left py-3 px-4 font-semibold text-green-700">{t('date')}</th>
+                  <th className="text-left py-3 px-4 font-semibold text-green-700">{t('adminStatus')}</th>
+                  <th className="text-left py-3 px-4 font-semibold text-green-700">{t('collector')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -154,23 +172,23 @@ const Dashboard = () => {
                       <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                         <span className="text-2xl">📭</span>
                       </div>
-                      <h4 className="text-lg font-semibold text-gray-600 mb-2">No Orders Yet</h4>
-                      <p className="text-gray-500">Submit your first pickup request to get started!</p>
+                      <h4 className="text-lg font-semibold text-gray-600 mb-2">{t('noOrdersYet')}</h4>
+                      <p className="text-gray-500">{t('submitFirstPickup')}</p>
                     </td>
                   </tr>
                 ) : (
                   recentPickups.map((pickup, index) => (
                     <tr key={index} className="border-b border-gray-200 hover:bg-gray-50">
-                      <td className="py-3 px-4 text-gray-700 font-mono text-sm">{pickup.id}</td>
+                      <td className="py-3 px-4 text-gray-700 font-mono text-sm">#{pickup.userOrderNumber || pickup.id}</td>
                       <td className="py-3 px-4 text-gray-700">{pickup.type}</td>
                       <td className="py-3 px-4 text-gray-700">{pickup.weight}</td>
                       <td className="py-3 px-4 text-gray-700">{pickup.date}</td>
                       <td className="py-3 px-4">
                         <span className={`px-3 py-1 rounded-full text-sm font-medium flex items-center gap-1 ${getStatusColor(pickup.adminStatus)}`}>
-                          {getStatusIcon(pickup.adminStatus)} {pickup.adminStatus}
+                          {getStatusIcon(pickup.adminStatus)} {getStatusText(pickup.adminStatus)}
                         </span>
                       </td>
-                      <td className="py-3 px-4 text-gray-700 text-sm">{pickup.collectorAssigned}</td>
+                      <td className="py-3 px-4 text-gray-700 text-sm">{pickup.collectorAssigned === 'Not assigned yet' ? t('notAssignedYet') : pickup.collectorAssigned}</td>
                     </tr>
                   ))
                 )}

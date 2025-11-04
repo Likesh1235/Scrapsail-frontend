@@ -247,7 +247,7 @@ export default function UserDashboard() {
                               <div className="flex-1">
                                 <div className="flex items-center gap-2 mb-2">
                                   <p className="font-semibold text-white text-lg">{order.itemType || 'Waste'}</p>
-                                  <span className="text-xs bg-white/20 text-white px-2 py-1 rounded">#{order.id}</span>
+                                  <span className="text-xs bg-white/20 text-white px-2 py-1 rounded">#{order.userOrderNumber || order.id}</span>
                                 </div>
                                 <p className="text-sm text-white/70 mb-1">
                                   📅 {new Date(order.createdAt).toLocaleDateString()} • ⚖️ {order.weight}kg

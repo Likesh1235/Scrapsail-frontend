@@ -436,7 +436,7 @@ export default function AdminDashboard() {
                   {allOrders.map((order) => (
                     <tr key={order.id} className="border-b border-white/20 hover:bg-white/10 transition-colors">
                       <td className="py-4 px-4">
-                        <div className="text-white font-mono text-sm font-bold">#{order.id}</div>
+                        <div className="text-white font-mono text-sm font-bold">#{order.userOrderNumber || order.id}</div>
                         <div className="text-white/60 text-xs">
                           {order.createdAt ? new Date(order.createdAt).toLocaleDateString() : 'N/A'}
                         </div>

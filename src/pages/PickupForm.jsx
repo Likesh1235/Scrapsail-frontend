@@ -160,7 +160,7 @@ const PickupForm = () => {
 
               if (data.success) {
                 // Show success modal
-                setOrderId(data.order?.id || data.orderId || 'N/A');
+                setOrderId(data.order?.userOrderNumber || data.order?.id || data.orderId || 'N/A');
                 setShowSuccessModal(true);
                 
                 // Reset form
@@ -419,7 +419,7 @@ const PickupForm = () => {
             {/* Order Details */}
             <div className="bg-green-50 rounded-xl p-4 mb-6">
               <div className="text-sm text-gray-600 mb-1">Order ID</div>
-              <div className="text-lg font-semibold text-green-700">#{orderId}</div>
+              <div className="text-lg font-semibold text-green-700">#{orderId?.userOrderNumber || orderId?.id || orderId}</div>
             </div>
             
             {/* Info Box */}

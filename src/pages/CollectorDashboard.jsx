@@ -33,6 +33,7 @@ export default function CollectorDashboard() {
           
           const formattedPickups = myOrders.map(order => ({
             id: order.id,
+            userOrderNumber: order.userOrderNumber || order.id,
             userId: order.user?.id || 'Unknown',
             userName: order.user?.name || order.userEmail?.split('@')[0] || 'Unknown',
             userEmail: order.userEmail || order.user?.email || 'Not provided',
@@ -182,7 +183,7 @@ export default function CollectorDashboard() {
                     assignedPickups.map((pickup) => (
                       <tr key={pickup.id} className="border-b border-white/20 hover:bg-white/10 transition-colors">
                         <td className="py-4 px-4">
-                          <div className="text-white font-mono text-sm font-bold">#{pickup.id}</div>
+                          <div className="text-white font-mono text-sm font-bold">#{pickup.userOrderNumber || pickup.id}</div>
                           <div className="text-white/60 text-xs">
                             {pickup.createdAt ? new Date(pickup.createdAt).toLocaleDateString() : 'N/A'}
                           </div>
@@ -204,31 +205,26 @@ export default function CollectorDashboard() {
                           <div className="text-white/60 text-xs">{pickup.carbonCreditsEarned} credits</div>
                         </td>
                         <td className="py-4 px-4">
-                          {/* Address */}
-                          <div className="text-white text-sm max-w-xs mb-2">
-                            📍 {pickup.pickupAddress}
-                          </div>
-                          
-                          {/* Scheduled Date - Only show if exists */}
-                          {pickup.scheduledDate && (
-                            <div className="text-white/60 text-xs mb-2">
-                              📅 {new Date(pickup.scheduledDate).toLocaleDateString()}
-                            </div>
-                          )}
-                          
-                          {/* GPS Coordinates & Navigation */}
+                          {/* Location & Navigation */}
                           <div className="space-y-2">
                             {/* Address Display */}
                             {pickup.pickupAddress && (
-                              <div className="text-white/80 text-xs mb-2">
+                              <div className="text-white text-sm mb-2">
                                 📍 {pickup.pickupAddress}
+                              </div>
+                            )}
+                            
+                            {/* Scheduled Date - Only show if exists */}
+                            {pickup.scheduledDate && (
+                              <div className="text-white/60 text-xs mb-2">
+                                📅 {new Date(pickup.scheduledDate).toLocaleDateString()}
                               </div>
                             )}
                             
                             {/* Coordinates Display (if available) */}
                             {pickup.latitude && pickup.longitude && (
                               <div className="text-blue-300 text-xs font-mono mb-2">
-                                🗺️ {pickup.latitude.toFixed(6)}, {pickup.longitude.toFixed(6)}
+                                🗺️ GPS: {pickup.latitude.toFixed(6)}, {pickup.longitude.toFixed(6)}
                               </div>
                             )}
                             
@@ -270,21 +266,6 @@ export default function CollectorDashboard() {
                                 </div>
                               )}
                             </div>
-                            
-                            {/* Show status info */}
-                            {pickup.latitude && pickup.longitude ? (
-                              <div className="text-green-300 text-xs">
-                                ✅ GPS coordinates: {pickup.latitude.toFixed(6)}, {pickup.longitude.toFixed(6)}
-                              </div>
-                            ) : pickup.gpsLink ? (
-                              <div className="text-yellow-300 text-xs">
-                                ⚠️ Using GPS link from database
-                              </div>
-                            ) : pickup.pickupAddress ? (
-                              <div className="text-yellow-300 text-xs">
-                                ⚠️ Using address-based navigation
-                              </div>
-                            ) : null}
                           </div>
                           
                           {/* Admin Notes */}

@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { LanguageProvider } from "./contexts/LanguageContext";
 import Register from "./pages/Register";
 import Login from "./pages/Login";
 import PickupForm from "./pages/PickupForm";
@@ -53,76 +54,78 @@ const LoginRoute = () => {
 
 function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        {/* Root path shows login page */}
-        <Route path="/" element={<LoginRoute />} />
-        {/* Keep /login as alias for backwards compatibility */}
-        <Route path="/login" element={<LoginRoute />} />
-        {/* Keep /home for the home page if needed */}
-        <Route path="/home" element={<Home />} />
-        <Route path="/register" element={<Register />} />
-        {/* User-only routes */}
-        <Route 
-          path="/pickup" 
-          element={
-            <ProtectedRoute allowedRoles={['user']}>
-              <PickupForm />
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/wallet" 
-          element={
-            <ProtectedRoute allowedRoles={['user']}>
-              <CarbonWallet />
-            </ProtectedRoute>
-          } 
-        />
-        
-        {/* General routes */}
-        <Route path="/dashboard" element={<Dashboard />} />
-        
-        {/* General routes */}
-        <Route path="/leaderboard" element={<Leaderboard />} />
-        
-        {/* Admin-only routes */}
-        <Route 
-          path="/admin" 
-          element={
-            <ProtectedRoute allowedRoles={['admin']}>
-              <AdminDashboard />
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/admin-dashboard" 
-          element={
-            <ProtectedRoute allowedRoles={['admin']}>
-              <AdminDashboard />
-            </ProtectedRoute>
-          } 
-        />
-        
-        {/* Collector-only routes */}
-        <Route 
-          path="/collector" 
-          element={
-            <ProtectedRoute allowedRoles={['collector']}>
-              <CollectorDashboard />
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/collector-dashboard" 
-          element={
-            <ProtectedRoute allowedRoles={['collector']}>
-              <CollectorDashboard />
-            </ProtectedRoute>
-          } 
-        />
-      </Routes>
-    </BrowserRouter>
+    <LanguageProvider>
+      <BrowserRouter>
+        <Routes>
+          {/* Root path shows login page */}
+          <Route path="/" element={<LoginRoute />} />
+          {/* Keep /login as alias for backwards compatibility */}
+          <Route path="/login" element={<LoginRoute />} />
+          {/* Keep /home for the home page if needed */}
+          <Route path="/home" element={<Home />} />
+          <Route path="/register" element={<Register />} />
+          {/* User-only routes */}
+          <Route 
+            path="/pickup" 
+            element={
+              <ProtectedRoute allowedRoles={['user']}>
+                <PickupForm />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/wallet" 
+            element={
+              <ProtectedRoute allowedRoles={['user']}>
+                <CarbonWallet />
+              </ProtectedRoute>
+            } 
+          />
+          
+          {/* General routes */}
+          <Route path="/dashboard" element={<Dashboard />} />
+          
+          {/* General routes */}
+          <Route path="/leaderboard" element={<Leaderboard />} />
+          
+          {/* Admin-only routes */}
+          <Route 
+            path="/admin" 
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <AdminDashboard />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/admin-dashboard" 
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <AdminDashboard />
+              </ProtectedRoute>
+            } 
+          />
+          
+          {/* Collector-only routes */}
+          <Route 
+            path="/collector" 
+            element={
+              <ProtectedRoute allowedRoles={['collector']}>
+                <CollectorDashboard />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/collector-dashboard" 
+            element={
+              <ProtectedRoute allowedRoles={['collector']}>
+                <CollectorDashboard />
+              </ProtectedRoute>
+            } 
+          />
+        </Routes>
+      </BrowserRouter>
+    </LanguageProvider>
   );
 }
 
